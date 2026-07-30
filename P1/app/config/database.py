@@ -1,25 +1,41 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import sessionmaker
+from collections.abc import Callable
+
+from psycopg import Connection, connect
+from psycopg.errors import OperationalError
 
 from app.config.settings import Settings
 
-# Verifica que exista DATABASE_URL
-Settings.validate()
 
-# Motor de conexión
-engine = create_engine(
-    Settings.DATABASE_URL,
-    pool_pre_ping=True,
-    echo=False
-)
+ConnectionFactory = Callable[[], Connection]
 
-# Sesiones de trabajo
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine
-)
 
-# Clase base para todos los modelos
-Base = declarative_base()
+def get_connection() -> Connection:
+    """
+    Crea y devuelve una nueva conexión a PostgreSQL en NeonDB.
+
+    La conexión real se verifica al ejecutar connect().
+    """
+    return connect(
+        conninfo=Settings.DATABASE_URL,
+        autocommit=False,
+    )
+
+
+def verify_database_connection() -> None:
+    """
+    Comprueba que la aplicación pueda conectarse correctamente
+    a PostgreSQL.
+
+    Debe utilizarse al iniciar la aplicación, no antes de cada
+    operación del repositorio.
+    """
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1;")
+                cursor.fetchone()
+
+    except OperationalError as error:
+        raise RuntimeError(
+            "No fue posible establecer conexión con NeonDB."
+        ) from error

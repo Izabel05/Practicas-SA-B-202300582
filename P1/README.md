@@ -8,3 +8,15 @@ Segundo Prompt:
 Voy a trabajar con una arquitectura MVC para tener en cuenta el escalamiento en un futuro .Como tal necesito la elaboración de un CRUD que siga las convenciones REST, que sea un código limpio que siga las buenas practicas de desarrollo utilizando nombres descriptivos y evitando la duplicación de código usando el lenguaje de python. El sistema debe estar predispuesto a conectarse una base de datos PostgreSQL alojada de manera presistente en NeonDB. La API debe comunicarse meadiante formato JSON , la estructura utilizada sera la siguiente: { "titulo":"Adquisicion de nuevo servidor", "area_solicitante": "Infraestructura TI", "prioridad": 3, "costo_estimado": 2500.00, "estado": "registrada" }
 
 ![alt text](image-1.png)
+
+Teniendo en cuenta lo siguiente :
+* Obtener la información de todas las solicitudes operativas.
+* Registrar una nueva solicitud operativa.
+* Actualizar completamente la información de una solicitud existente.
+* Eliminar una solicitud operativa.
+* Actualizar exclusivamente el estado de una solicitud operativa, sin modificar el
+resto de sus atributos.
+
+Necesito que refactorices el codigo para poder implementar la peticion PATCH a la base de datos , teniendo en cuenta que el codigo debe ser clean code , seguir los principios SOLID y las convecnciones REST 
+
+![alt text](image-2.png)
