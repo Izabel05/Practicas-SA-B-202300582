@@ -395,13 +395,6 @@ eliminar una solicitud
 ```
 
 El repositorio no debe decidir reglas del negocio. Solo debe consultar o modificar la base de datos.
-Teniendo en cuenta lo siguiente :
-* Obtener la información de todas las solicitudes operativas.
-* Registrar una nueva solicitud operativa.
-* Actualizar completamente la información de una solicitud existente.
-* Eliminar una solicitud operativa.
-* Actualizar exclusivamente el estado de una solicitud operativa, sin modificar el
-resto de sus atributos.
 
 #### Ajustes aplicados para garantizar seguridad y limpieza
 
@@ -511,6 +504,13 @@ Esto sigue el principio DRY:
 La arquitectura propuesta mejora la limpieza porque cada capa tiene una función definida. También mejora la seguridad al separar las credenciales, validar los datos antes de procesarlos y evitar que el acceso a PostgreSQL quede disperso en diferentes archivos. La organización por capas y el uso de .env aparecen como parte de la respuesta del segundo prompts.
 
 ### Tercer prompt
+Teniendo en cuenta lo siguiente :
+* Obtener la información de todas las solicitudes operativas.
+* Registrar una nueva solicitud operativa.
+* Actualizar completamente la información de una solicitud existente.
+* Eliminar una solicitud operativa.
+* Actualizar exclusivamente el estado de una solicitud operativa, sin modificar el
+resto de sus atributos.
 
 Necesito que refactorices el codigo para poder implementar la peticion PATCH a la base de datos , teniendo en cuenta que el codigo debe ser clean code , seguir los principios SOLID y las convecnciones REST 
 
