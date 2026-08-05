@@ -1,41 +1,76 @@
-from collections.abc import Callable
+from collections.abc import Generator
+from contextlib import contextmanager
 
-from psycopg import Connection, connect
-from psycopg.errors import OperationalError
+from psycopg import Connection
+from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
 
 from app.config.settings import Settings
+from app.exceptions.database_exception import (
+    DatabaseConnectionException,
+)
 
 
-ConnectionFactory = Callable[[], Connection]
+class Database:
+    """Administra el grupo de conexiones con PostgreSQL."""
 
+    def __init__(self) -> None:
+        Settings.validate()
 
-def get_connection() -> Connection:
-    """
-    Crea y devuelve una nueva conexión a PostgreSQL en NeonDB.
+        self._pool = ConnectionPool(
+            conninfo=Settings.DATABASE_URL,
+            min_size=Settings.DATABASE_POOL_MIN_SIZE,
+            max_size=Settings.DATABASE_POOL_MAX_SIZE,
+            kwargs={
+                "autocommit": False,
+                "row_factory": dict_row,
+            },
+            open=False,
+        )
 
-    La conexión real se verifica al ejecutar connect().
-    """
-    return connect(
-        conninfo=Settings.DATABASE_URL,
-        autocommit=False,
-    )
+    def open(self) -> None:
+        """Abre el grupo de conexiones."""
 
+        try:
+            self._pool.open()
+            self._pool.wait()
+        except Exception as error:
+            raise DatabaseConnectionException() from error
 
-def verify_database_connection() -> None:
-    """
-    Comprueba que la aplicación pueda conectarse correctamente
-    a PostgreSQL.
+    def close(self) -> None:
+        """Cierra el grupo de conexiones."""
 
-    Debe utilizarse al iniciar la aplicación, no antes de cada
-    operación del repositorio.
-    """
-    try:
-        with get_connection() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute("SELECT 1;")
-                cursor.fetchone()
+        self._pool.close()
 
-    except OperationalError as error:
-        raise RuntimeError(
-            "No fue posible establecer conexión con NeonDB."
-        ) from error
+    @contextmanager
+    def connection(
+        self,
+    ) -> Generator[Connection, None, None]:
+        """Entrega una conexión con control de transacciones."""
+
+        try:
+            with self._pool.connection() as connection:
+                try:
+                    yield connection
+                    connection.commit()
+                except Exception:
+                    connection.rollback()
+                    raise
+        except DatabaseConnectionException:
+            raise
+        except Exception as error:
+            raise DatabaseConnectionException() from error
+
+    def health_check(self) -> bool:
+        """Comprueba la comunicación con PostgreSQL."""
+
+        try:
+            with self.connection() as connection:
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT 1 AS status;")
+                    result = cursor.fetchone()
+
+            return bool(result and result["status"] == 1)
+
+        except DatabaseConnectionException:
+            return False
