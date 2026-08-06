@@ -407,3 +407,141 @@
         width: 100%;
     }
 }
+
+.card-icon svg {
+    width: 25px;
+    height: 25px;
+}
+
+.route-label {
+    display: inline-flex;
+    align-items: center;
+
+    margin-top: 18px;
+    padding: 5px 10px;
+
+    background: #e0e7ff;
+    border-radius: 999px;
+
+    color: #4338ca;
+
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.admin-route-label {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.permission-list {
+    margin: 20px 0;
+    padding: 14px 16px;
+
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+}
+
+.permission-list p {
+    margin: 4px 0;
+
+    color: #475569;
+    font-size: 0.9rem;
+}
+
+.primary-action,
+.admin-action,
+.restricted-action,
+.logout-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+}
+
+.admin-action {
+    width: 100%;
+    margin-top: auto;
+    padding: 13px 18px;
+
+    border: none;
+    border-radius: 12px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #d97706,
+            #ea580c
+        );
+
+    color: #ffffff;
+
+    font-weight: 750;
+    cursor: pointer;
+
+    box-shadow:
+        0 12px 24px rgba(234, 88, 12, 0.22);
+
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.admin-action:hover:not(:disabled) {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 16px 30px rgba(234, 88, 12, 0.3);
+}
+
+.admin-action:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.restricted-card {
+    border-color: #fecaca;
+    background: rgba(255, 247, 247, 0.92);
+}
+
+.restricted-card::before {
+    background:
+        linear-gradient(
+            90deg,
+            #ef4444,
+            #f97316
+        );
+}
+
+.restricted-action {
+    width: 100%;
+    margin-top: auto;
+    padding: 13px 18px;
+
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+
+    background: #fee2e2;
+    color: #b91c1c;
+
+    font-weight: 750;
+    cursor: not-allowed;
+}
+
+.common-icon {
+    background: #e0e7ff;
+    color: #4338ca;
+}
+
+.admin-icon {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.logout-button svg {
+    width: 18px;
+    height: 18px;
+}

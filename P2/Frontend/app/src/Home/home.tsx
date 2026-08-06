@@ -1,9 +1,21 @@
 import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
+import {
+  FiActivity,
+  FiClock,
+  FiLogOut,
+  FiShield,
+  FiUser,
+} from "react-icons/fi";
 
-import { getHistory } from "../services/history.service";
+import {
+  getRutaDos,
+  getRutaUno,
+} from "../services/protected.service";
 import type { AuthenticatedUser } from "../types/auth";
 import "./home.css";
+
+type MessageType = "success" | "error" | null;
 
 function getAuthenticatedUser(): AuthenticatedUser | null {
   const storedUser = sessionStorage.getItem(
@@ -26,29 +38,72 @@ export default function Home() {
   const navigate = useNavigate();
   const user = getAuthenticatedUser();
 
-  const [message, setMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [commonMessage, setCommonMessage] = useState("");
+  const [commonMessageType, setCommonMessageType] =
+    useState<MessageType>(null);
+
+  const [adminMessage, setAdminMessage] = useState("");
+  const [adminMessageType, setAdminMessageType] =
+    useState<MessageType>(null);
+
+  const [isCommonLoading, setIsCommonLoading] =
+    useState(false);
+
+  const [isAdminLoading, setIsAdminLoading] =
+    useState(false);
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  async function handleViewHistory(): Promise<void> {
-    setMessage("");
-    setIsLoading(true);
+  const roleLabel =
+    user.role === "ADMIN"
+      ? "Administrador"
+      : "Cliente";
+
+  async function handleCommonAccess(): Promise<void> {
+    setCommonMessage("");
+    setCommonMessageType(null);
+    setIsCommonLoading(true);
 
     try {
-      const result = await getHistory();
+      const result = await getRutaDos();
 
-      setMessage(result.message);
+      setCommonMessage(result.message);
+      setCommonMessageType("success");
     } catch (error: unknown) {
-      setMessage(
+      setCommonMessage(
         error instanceof Error
           ? error.message
-          : "No fue posible obtener el historial.",
+          : "No fue posible acceder a la Ruta 2.",
       );
+
+      setCommonMessageType("error");
     } finally {
-      setIsLoading(false);
+      setIsCommonLoading(false);
+    }
+  }
+
+  async function handleAdminAccess(): Promise<void> {
+    setAdminMessage("");
+    setAdminMessageType(null);
+    setIsAdminLoading(true);
+
+    try {
+      const result = await getRutaUno();
+
+      setAdminMessage(result.message);
+      setAdminMessageType("success");
+    } catch (error: unknown) {
+      setAdminMessage(
+        error instanceof Error
+          ? error.message
+          : "Acceso denegado para Ruta 1.",
+      );
+
+      setAdminMessageType("error");
+    } finally {
+      setIsAdminLoading(false);
     }
   }
 
@@ -60,11 +115,6 @@ export default function Home() {
     });
   }
 
-  const roleLabel =
-    user.role === "ADMIN"
-      ? "Administrador"
-      : "Cliente";
-
   return (
     <main className="dashboard-page">
       <header className="dashboard-header">
@@ -73,9 +123,7 @@ export default function Home() {
             Panel principal
           </p>
 
-          <h1>
-            Hola, {user.first_name}
-          </h1>
+          <h1>Hola, {user.first_name}</h1>
 
           <p className="dashboard-subtitle">
             Bienvenido nuevamente al sistema.
@@ -100,7 +148,7 @@ export default function Home() {
       <section className="dashboard-grid">
         <article className="dashboard-card profile-card">
           <div className="card-icon">
-            
+            <FiUser />
           </div>
 
           <div>
@@ -119,6 +167,7 @@ export default function Home() {
 
             <div>
               <dt>Rol</dt>
+
               <dd>
                 <span className="role-badge">
                   {roleLabel}
@@ -128,62 +177,113 @@ export default function Home() {
           </dl>
         </article>
 
-        <article className="dashboard-card history-card">
-          <div className="card-icon history-icon">
-            
+        <article className="dashboard-card common-card">
+          <div className="card-icon common-icon">
+            <FiActivity />
           </div>
 
           <div>
-            <h2>Historial</h2>
+            <span className="route-label">
+              Ruta 2
+            </span>
+
+            <h2>Acceso compartido</h2>
 
             <p>
-              Consulta la actividad registrada en tu cuenta.
+              Esta sección está disponible para administradores
+              y clientes.
+            </p>
+          </div>
+
+          <div className="permission-list">
+            <p>
+              <strong>Administrador:</strong> acceso permitido
+            </p>
+
+            <p>
+              <strong>Cliente:</strong> acceso permitido
             </p>
           </div>
 
           <button
             className="primary-action"
             type="button"
-            onClick={handleViewHistory}
-            disabled={isLoading}
+            onClick={handleCommonAccess}
+            disabled={isCommonLoading}
           >
-            {isLoading
+            <FiClock />
+
+            {isCommonLoading
               ? "Consultando..."
               : "Ver historial"}
           </button>
 
-          {message && (
-            <div className="dashboard-message">
-              {message}
+          {commonMessage && (
+            <div
+              className={
+                commonMessageType === "success"
+                  ? "dashboard-message"
+                  : "dashboard-message dashboard-error"
+              }
+            >
+              {commonMessage}
             </div>
           )}
         </article>
 
-        {user.role === "ADMIN" && (
-          <article className="dashboard-card admin-card">
-            <div className="card-icon admin-icon">
-              
-            </div>
+        <article className="dashboard-card admin-card">
+          <div className="card-icon admin-icon">
+            <FiShield />
+          </div>
 
-            <div>
-              <h2>Panel administrativo</h2>
+          <div>
+            <span className="route-label admin-route-label">
+              Ruta 1
+            </span>
 
-              <p>
-                Acceso disponible únicamente para administradores.
-              </p>
-            </div>
+            <h2>Acceso administrativo</h2>
 
-            <button
-              className="secondary-action"
-              type="button"
-              onClick={() => {
-                navigate("/admin");
-              }}
+            <p>
+              Esta ruta comprueba si el usuario tiene permisos
+              de administrador.
+            </p>
+          </div>
+
+          <div className="permission-list">
+            <p>
+              <strong>Administrador:</strong> acceso permitido
+            </p>
+
+            <p>
+              <strong>Cliente:</strong> acceso denegado
+            </p>
+          </div>
+
+          <button
+            className="admin-action"
+            type="button"
+            onClick={handleAdminAccess}
+            disabled={isAdminLoading}
+          >
+            <FiShield />
+
+            {isAdminLoading
+              ? "Verificando..."
+              : "Probar acceso a Ruta 1"}
+          </button>
+
+          {adminMessage && (
+            <div
+              className={
+                adminMessageType === "success"
+                  ? "dashboard-message"
+                  : "dashboard-message dashboard-error"
+              }
             >
-              Ir al panel
-            </button>
-          </article>
-        )}
+              {adminMessage}
+            </div>
+          )}
+        </article>
       </section>
 
       <footer className="dashboard-footer">
@@ -197,6 +297,7 @@ export default function Home() {
           type="button"
           onClick={handleLogout}
         >
+          <FiLogOut />
           Cerrar sesión
         </button>
       </footer>
