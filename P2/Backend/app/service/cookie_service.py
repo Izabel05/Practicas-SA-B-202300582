@@ -16,9 +16,9 @@ class CookieService:
         token: str,
     ) -> None:
         cookie_lifetime = (
-            Settings.JWT_EXPIRATION_MINUTES
-            + Settings.JWT_RENEWAL_WINDOW_MINUTES
-        ) * 60
+            Settings.JWT_EXPIRATION_SECONDS
+            + Settings.JWT_RENEWAL_WINDOW_SECONDS
+        )
 
         response.set_cookie(
             key=Settings.COOKIE_NAME,

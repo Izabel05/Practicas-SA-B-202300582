@@ -29,7 +29,7 @@ class JWTService(TokenServiceInterface):
     ) -> str:
         now = datetime.now(timezone.utc)
         expiration = now + timedelta(
-            minutes=Settings.JWT_EXPIRATION_MINUTES,
+            seconds=Settings.JWT_EXPIRATION_SECONDS,
         )
 
         payload = {
@@ -75,7 +75,17 @@ class JWTService(TokenServiceInterface):
 
         elapsed_time = now - expiration
         renewal_window = timedelta(
-            minutes=Settings.JWT_RENEWAL_WINDOW_MINUTES,
+            seconds=Settings.JWT_RENEWAL_WINDOW_SECONDS,
+        )
+        print("Hora actual:", now)
+        print("JWT expiró en:", expiration)
+        print(
+            "Segundos desde expiración:",
+            elapsed_time.total_seconds(),
+        )
+        print(
+            "Ventana permitida:",
+            Settings.JWT_RENEWAL_WINDOW_SECONDS,
         )
 
         if elapsed_time < timedelta(0):

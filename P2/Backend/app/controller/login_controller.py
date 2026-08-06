@@ -30,3 +30,12 @@ class LoginController:
         )
 
         return result.response
+    def logout(
+        self,
+        response: Response,
+    ) -> dict[str, str]:
+        self._cookie_service.delete_auth_cookie(response)
+
+        return {
+            "message": "Sesión cerrada correctamente.",
+        }

@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from app.routes.protected_routes import router as protected_router
 from app.config.settings import Settings
 from app.dependencies.auth_dependencie import get_database
 from app.exceptions.handlers import register_exception_handlers
@@ -49,8 +49,9 @@ app.add_middleware(
 
 register_exception_handlers(app)
 
-app.include_router(auth_router)
 
+app.include_router(auth_router)
+app.include_router(protected_router)
 
 @app.get(
     "/api/health",

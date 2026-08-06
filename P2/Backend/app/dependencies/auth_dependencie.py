@@ -12,7 +12,16 @@ from app.service.login_service import LoginService
 from app.service.password_service import PasswordService
 from app.service.refresh_token_service import RefreshTokenService
 from app.service.resgitro_service import RegistroService
+from typing import Annotated, Callable
 
+from fastapi import Depends, Request
+
+from app.exceptions.auth_exception import UnauthorizedRoleException
+from app.models.role import RoleName
+from app.service.cookie_service import CookieService
+from app.service.interfaces.token_service_interface import (
+    TokenServiceInterface,
+)
 
 @lru_cache
 def get_database() -> Database:
@@ -110,3 +119,43 @@ def get_token_controller() -> TokenController:
         refresh_token_service=get_refresh_token_service(),
         cookie_service=get_cookie_service(),
     )
+def get_current_user(
+    request: Request,
+    cookie_service: Annotated[
+        CookieService,
+        Depends(get_cookie_service),
+    ],
+    token_service: Annotated[
+        TokenServiceInterface,
+        Depends(get_token_service),
+    ],
+) -> dict:
+    """Obtiene y valida el usuario autenticado desde la cookie."""
+
+    token = cookie_service.get_auth_token(request)
+
+    return token_service.validate_token(token)
+def require_roles(
+    allowed_roles: set[RoleName],
+) -> Callable:
+    """Crea una dependencia que valida los roles permitidos."""
+
+    def validate_role(
+        current_user: Annotated[
+            dict,
+            Depends(get_current_user),
+        ],
+    ) -> dict:
+        role_value = current_user.get("role")
+
+        try:
+            user_role = RoleName(role_value)
+        except (ValueError, TypeError):
+            raise UnauthorizedRoleException()
+
+        if user_role not in allowed_roles:
+            raise UnauthorizedRoleException()
+
+        return current_user
+
+    return validate_role

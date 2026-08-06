@@ -1,12 +1,12 @@
 from typing import Annotated
-
-from fastapi import APIRouter, Depends, Response, status
-
+from fastapi import APIRouter, Depends, Request, Response, status
+from app.controller.token_controller import TokenController
 from app.controller.login_controller import LoginController
 from app.controller.registro_controller import RegistroController
 from app.dependencies.auth_dependencie import (
     get_login_controller,
     get_registro_controller,
+    get_token_controller,
 )
 from app.schemas.auth_schema import AuthSchema
 from app.schemas.login_schema import LoginSchema
@@ -51,3 +51,32 @@ def login_user(
         schema=schema,
         response=response,
     )
+@router.post(
+    "/refresh",
+    status_code=status.HTTP_200_OK,
+)
+def refresh_token(
+    request: Request,
+    response: Response,
+    controller: Annotated[
+        TokenController,
+        Depends(get_token_controller),
+    ],
+) -> dict[str, str]:
+    return controller.refresh(
+        request=request,
+        response=response,
+    )
+
+@router.post(
+    "/logout",
+    status_code=status.HTTP_200_OK,
+)
+def logout_user(
+    response: Response,
+    controller: Annotated[
+        LoginController,
+        Depends(get_login_controller),
+    ],
+) -> dict[str, str]:
+    return controller.logout(response)

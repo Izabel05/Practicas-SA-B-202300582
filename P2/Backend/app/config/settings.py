@@ -18,12 +18,12 @@ class Settings:
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
     JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 
-    JWT_EXPIRATION_MINUTES = int(
-        os.getenv("JWT_EXPIRATION_MINUTES", "15")
+    JWT_EXPIRATION_SECONDS = int(
+        os.getenv("JWT_EXPIRATION_SECONDS", "60")
     )
 
-    JWT_RENEWAL_WINDOW_MINUTES = int(
-        os.getenv("JWT_RENEWAL_WINDOW_MINUTES", "10")
+    JWT_RENEWAL_WINDOW_SECONDS = int(
+        os.getenv("JWT_RENEWAL_WINDOW_SECONDS", "60")
     )
 
     JWT_ISSUER = os.getenv("JWT_ISSUER", "login-api")
@@ -70,14 +70,14 @@ class Settings:
                 f"{names}."
             )
 
-        if cls.JWT_EXPIRATION_MINUTES <= 0:
+        if cls.JWT_EXPIRATION_SECONDS <= 0:
             raise RuntimeError(
-                "JWT_EXPIRATION_MINUTES debe ser mayor que cero."
+                "JWT_EXPIRATION_SECONDS debe ser mayor que cero."
             )
 
-        if cls.JWT_RENEWAL_WINDOW_MINUTES <= 0:
+        if cls.JWT_RENEWAL_WINDOW_SECONDS <= 0:
             raise RuntimeError(
-                "JWT_RENEWAL_WINDOW_MINUTES debe ser mayor que cero."
+                "JWT_RENEWAL_WINDOW_SECONDS debe ser mayor que cero."
             )
 
         if cls.DATABASE_POOL_MIN_SIZE <= 0:

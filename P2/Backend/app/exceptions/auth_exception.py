@@ -65,3 +65,13 @@ class ExpiredTokenException(ApplicationException):
             status_code=401,
             error_code="EXPIRED_TOKEN",
         )
+
+class UnauthorizedRoleException(ApplicationException):
+    """Indica que el usuario no tiene permiso para acceder."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            message="No tiene permisos para acceder a esta ruta.",
+            status_code=403,
+            error_code="ACCESS_DENIED",
+        )

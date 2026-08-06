@@ -1,53 +1,136 @@
-import { useState } from 'react'
+import {
+  type ChangeEvent,
+  type FormEvent,
+  useState,
+} from "react";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 
-import './login.css'
+import { iniciarSesion } from "../services/auth.service";
+import type {
+  AuthenticatedUser,
+  LoginSchema,
+} from "../types/auth";
+import "./login.css";
+import { useAuthFeedback } from "../context/AuthFeedbackContext";
 
-function App() {
-  const [count, setCount] = useState(0)
+const initialForm: LoginSchema = {
+  email: "",
+  password: "",
+};
 
-  return (
-    <>
-      <section id="center">
-       
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+interface LocationState {
+  message?: string;
 }
 
-export default App
+export default function Login() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const { showWelcome } = useAuthFeedback();
+  const locationState =
+    location.state as LocationState | null;
+
+  const [form, setForm] =
+    useState<LoginSchema>(initialForm);
+
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  function handleChange(
+    event: ChangeEvent<HTMLInputElement>,
+  ): void {
+    const { name, value } = event.target;
+
+    setForm((currentForm) => ({
+      ...currentForm,
+      [name]: value,
+    }));
+  }
+
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ): Promise<void> {
+    event.preventDefault();
+
+    setError("");
+    setIsLoading(true);
+
+    try {
+      const result = await iniciarSesion(form);
+
+      const user: AuthenticatedUser = result.user;
+
+      sessionStorage.setItem(
+        "authenticated_user",
+        JSON.stringify(user),
+      );
+    showWelcome({
+      firstName: result.user.first_name,
+      role: result.user.role,
+    });
+
+      navigate("/home", {
+        replace: true,
+      });
+    } catch (requestError: unknown) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "No fue posible iniciar sesión.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  return (
+    <main className="auth-page">
+      <section className="auth-card">
+        <h1>Iniciar sesión</h1>
+
+        {locationState?.message && (
+          <p className="success-message">
+            {locationState.message}
+          </p>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <input
+            name="email"
+            type="email"
+            placeholder="Correo"
+            value={form.email}
+            onChange={handleChange}
+            required
+          />
+
+          <input
+            name="password"
+            type="password"
+            placeholder="Contraseña"
+            value={form.password}
+            onChange={handleChange}
+            required
+          />
+
+          <button type="submit" disabled={isLoading}>
+            {isLoading
+              ? "Ingresando..."
+              : "Ingresar"}
+          </button>
+        </form>
+
+        {error && <p className="error-message">{error}</p>}
+
+        <p>
+          ¿No tienes cuenta?{" "}
+          <Link to="/registro">Regístrate</Link>
+        </p>
+      </section>
+    </main>
+  );
+}
