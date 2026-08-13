@@ -15,11 +15,6 @@ BEGIN;
 -- Permite generar UUID seguros mediante gen_random_uuid().
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- Permite comparar correos sin diferenciar mayúsculas y minúsculas.
--- Ejemplo: correo@gmail.com = CORREO@gmail.com
-CREATE EXTENSION IF NOT EXISTS citext;
-
-
 -- ------------------------------------------------------------
 -- 2. Tabla de roles
 -- ------------------------------------------------------------
@@ -48,10 +43,14 @@ CREATE TABLE IF NOT EXISTS roles (
 CREATE TABLE IF NOT EXISTS usuarios (
     id UUID NOT NULL DEFAULT gen_random_uuid(),
 
-    nombre VARCHAR(100) NOT NULL,
-    apellido VARCHAR(100) NOT NULL,
+    -- Valores cifrados por el backend mediante AES-256-GCM.
+    nombre TEXT NOT NULL,
+    apellido TEXT NOT NULL,
 
-    correo CITEXT NOT NULL,
+    correo TEXT NOT NULL,
+
+    -- HMAC-SHA256 del correo normalizado para busquedas y unicidad.
+    correo_hash CHAR(64) NOT NULL,
 
     -- Aquí se almacena únicamente el hash generado por el backend.
     -- Nunca debe almacenarse la contraseña en texto plano.
@@ -70,8 +69,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
     CONSTRAINT pk_usuarios
         PRIMARY KEY (id),
 
-    CONSTRAINT uq_usuarios_correo
-        UNIQUE (correo),
+    CONSTRAINT uq_usuarios_correo_hash
+        UNIQUE (correo_hash),
 
     CONSTRAINT fk_usuarios_roles
         FOREIGN KEY (rol_id)
@@ -79,17 +78,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
         ON UPDATE CASCADE
         ON DELETE RESTRICT,
 
-    CONSTRAINT ck_usuarios_nombre
-        CHECK (char_length(trim(nombre)) >= 2),
-
-    CONSTRAINT ck_usuarios_apellido
-        CHECK (char_length(trim(apellido)) >= 2),
-
-    CONSTRAINT ck_usuarios_correo
-        CHECK (
-            correo::TEXT ~*
-            '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'
-        ),
+    CONSTRAINT ck_usuarios_correo_hash
+        CHECK (correo_hash ~ '^[0-9a-f]{64}$'),
 
     CONSTRAINT ck_usuarios_password_hash
         CHECK (char_length(password_hash) >= 20)
@@ -100,7 +90,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
 -- 4. Índices
 -- ------------------------------------------------------------
 
--- La restricción UNIQUE del correo ya crea su propio índice.
+-- La restricción UNIQUE de correo_hash ya crea su propio índice.
 -- Este índice ayuda en consultas y filtros por rol.
 CREATE INDEX IF NOT EXISTS idx_usuarios_rol_id
     ON usuarios (rol_id);

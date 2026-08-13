@@ -15,13 +15,19 @@ from app.models.user import User
 from app.repository.interface.user_repository_interface import (
     UserRepositoryInterface,
 )
+from app.service.data_encryption_service import DataEncryptionService
 
 
 class UserRepository(UserRepositoryInterface):
     """Implementa las operaciones de usuarios en PostgreSQL."""
 
-    def __init__(self, database: Database) -> None:
+    def __init__(
+        self,
+        database: Database,
+        encryption_service: DataEncryptionService,
+    ) -> None:
         self._database = database
+        self._encryption_service = encryption_service
 
     def find_by_email(self, email: str) -> User | None:
         query = """
@@ -41,14 +47,17 @@ class UserRepository(UserRepositoryInterface):
             FROM usuarios AS u
             INNER JOIN roles AS r
                 ON r.id = u.rol_id
-            WHERE u.correo = %s
+            WHERE u.correo_hash = %s
             LIMIT 1;
         """
 
         try:
             with self._database.connection() as connection:
                 with connection.cursor() as cursor:
-                    cursor.execute(query, (email,))
+                    cursor.execute(
+                        query,
+                        (self._encryption_service.create_search_hash(email),),
+                    )
                     row = cursor.fetchone()
 
             return self._map_user(row) if row else None
@@ -102,10 +111,11 @@ class UserRepository(UserRepositoryInterface):
                 nombre,
                 apellido,
                 correo,
+                correo_hash,
                 password_hash,
                 rol_id
             )
-            VALUES (%s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING id;
         """
 
@@ -115,9 +125,10 @@ class UserRepository(UserRepositoryInterface):
                     cursor.execute(
                         query,
                         (
-                            first_name,
-                            last_name,
-                            email,
+                            self._encryption_service.encrypt(first_name),
+                            self._encryption_service.encrypt(last_name),
+                            self._encryption_service.encrypt(email),
+                            self._encryption_service.create_search_hash(email),
                             password_hash,
                             role_id,
                         ),
@@ -158,13 +169,12 @@ class UserRepository(UserRepositoryInterface):
         except DatabaseError as error:
             raise DatabaseOperationException() from error
 
-    @staticmethod
-    def _map_user(row: dict[str, Any]) -> User:
+    def _map_user(self, row: dict[str, Any]) -> User:
         return User(
             id=row["id"],
-            first_name=row["first_name"],
-            last_name=row["last_name"],
-            email=row["email"],
+            first_name=self._encryption_service.decrypt(row["first_name"]),
+            last_name=self._encryption_service.decrypt(row["last_name"]),
+            email=self._encryption_service.decrypt(row["email"]),
             password_hash=row["password_hash"],
             role_id=row["role_id"],
             role_name=RoleName(row["role_name"]),

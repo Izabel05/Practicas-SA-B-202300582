@@ -29,6 +29,9 @@ class Settings:
     JWT_ISSUER = os.getenv("JWT_ISSUER", "login-api")
     JWT_AUDIENCE = os.getenv("JWT_AUDIENCE", "login-client")
 
+    DATA_ENCRYPTION_KEY = os.getenv("DATA_ENCRYPTION_KEY")
+    DATA_SEARCH_KEY = os.getenv("DATA_SEARCH_KEY")
+
     COOKIE_NAME = os.getenv("COOKIE_NAME", "access_token")
     COOKIE_SECURE = os.getenv(
         "COOKIE_SECURE",
@@ -61,6 +64,12 @@ class Settings:
 
         if not cls.JWT_SECRET_KEY:
             missing_variables.append("JWT_SECRET_KEY")
+
+        if not cls.DATA_ENCRYPTION_KEY:
+            missing_variables.append("DATA_ENCRYPTION_KEY")
+
+        if not cls.DATA_SEARCH_KEY:
+            missing_variables.append("DATA_SEARCH_KEY")
 
         if missing_variables:
             names = ", ".join(missing_variables)

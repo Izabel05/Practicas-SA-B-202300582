@@ -7,6 +7,7 @@ from app.controller.token_controller import TokenController
 from app.repository.role_repository import RoleRepository
 from app.repository.user_repository import UserRepository
 from app.service.cookie_service import CookieService
+from app.service.data_encryption_service import DataEncryptionService
 from app.service.jwt_service import JWTService
 from app.service.login_service import LoginService
 from app.service.password_service import PasswordService
@@ -51,11 +52,19 @@ def get_cookie_service() -> CookieService:
     return CookieService()
 
 
+@lru_cache
+def get_data_encryption_service() -> DataEncryptionService:
+    """Devuelve el servicio compartido de cifrado de datos."""
+
+    return DataEncryptionService()
+
+
 def get_user_repository() -> UserRepository:
     """Construye el repositorio de usuarios."""
 
     return UserRepository(
         database=get_database(),
+        encryption_service=get_data_encryption_service(),
     )
 
 

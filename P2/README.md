@@ -14,6 +14,7 @@ El proyecto implementa un sistema web de registro, autenticación y autorizació
 | Base de datos | PostgreSQL | Almacenamiento de usuarios, roles, contraseñas protegidas y fechas de acceso. |
 | Acceso a datos | Psycopg 3 y psycopg-pool | Consultas SQL, transacciones y grupo de conexiones con PostgreSQL. |
 | Contraseñas | Argon2id | Creación y verificación de hashes de contraseñas. |
+| Datos sensibles | AES-256-GCM y HMAC-SHA256 | Cifrado de nombres, apellidos y correos e índice seguro para buscar correos. |
 | Autenticación | PyJWT | Creación, validación y renovación de tokens JWT firmados. |
 | Sesión | Cookies HttpOnly | Transporte del JWT entre el navegador y el backend. |
 
@@ -73,6 +74,21 @@ return self._password_hasher.verify(
 
 Se eligió hashing para las contraseñas porque no es necesario recuperar su valor original. Si la base de datos se expone, el sistema no contiene una clave con la que puedan descifrarse directamente todas las contraseñas.
 
+## Cifrado de datos sensibles con AES-GCM
+
+Los nombres, apellidos y correos se cifran antes de insertarse en PostgreSQL mediante AES-256-GCM. Cada operación utiliza un *nonce* aleatorio de 12 bytes, por lo que cifrar dos veces el mismo valor produce textos cifrados diferentes. Al consultar un usuario, `UserRepository` descifra estos campos antes de construir el modelo de dominio.
+
+Como el correo cifrado no puede compararse directamente en SQL, el backend almacena adicionalmente `correo_hash`: un HMAC-SHA256 del correo normalizado. Este índice permite buscar usuarios y aplicar unicidad sin guardar el correo legible.
+
+Las claves deben ser diferentes, contener 32 bytes codificados en Base64 URL-safe y permanecer exclusivamente en el `.env` del backend:
+
+```env
+DATA_ENCRYPTION_KEY=<clave AES de 32 bytes en Base64 URL-safe>
+DATA_SEARCH_KEY=<clave HMAC de 32 bytes en Base64 URL-safe>
+```
+
+Las contraseñas continúan protegidas con Argon2id porque nunca necesitan recuperarse. AES-GCM se reserva para los datos que la aplicación sí debe mostrar nuevamente.
+
 
 ## Cookies de autenticación
 
@@ -129,6 +145,7 @@ En el backend se aplica mediante la separación de responsabilidades por capas y
 - `Backend/app/controller/login_controller.py` coordina la petición de inicio o cierre de sesión y la escritura o eliminación de la cookie, pero delega la lógica de autenticación.
 - `Backend/app/service/login_service.py` contiene únicamente el caso de uso de inicio de sesión: busca al usuario, valida su estado y contraseña, genera el token y actualiza el último acceso.
 - `Backend/app/service/password_service.py` se ocupa exclusivamente de generar y verificar hashes de contraseñas con Argon2.
+- `Backend/app/service/data_encryption_service.py` cifra y descifra datos sensibles y genera el HMAC usado para buscar correos.
 - `Backend/app/service/jwt_service.py` se ocupa de crear, validar y renovar tokens JWT.
 - `Backend/app/service/cookie_service.py` administra exclusivamente la cookie de autenticación.
 - `Backend/app/repository/user_repository.py` concentra el acceso y mapeo de los datos de usuarios en PostgreSQL.
