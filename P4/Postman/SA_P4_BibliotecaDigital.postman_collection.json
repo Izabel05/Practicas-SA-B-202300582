@@ -1,0 +1,771 @@
+{
+  "info": {
+    "_postman_id": "07217300-8ad0-49cf-b241-7c4289db0ab5",
+    "name": "SA_P4_BibliotecaDigital",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "49186250",
+    "_collection_link": "https://go.postman.co/collection/49186250-07217300-8ad0-49cf-b241-7c4289db0ab5?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Estado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "GET http://localhost:8081/health",
+              "protocol": "GET http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Registrar usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Usuario registrado\", function () {\r",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 409]);\r",
+                  "});\r",
+                  "\r",
+                  "if (pm.response.code === 201) {\r",
+                  "    const data = pm.response.json();\r",
+                  "    pm.environment.set(\"jwt_token\", data.token);\r",
+                  "    pm.environment.set(\"user_id\", data.usuario.id_usuario);\r",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"nombre\": \"Ana\",\r\n  \"apellido\": \"López\",\r\n  \"correo\": \"{{user_email}}\",\r\n  \"password\": \"{{user_password}}\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "POST http://localhost:8081/api/v1/auth/register",
+              "protocol": "POST http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Login exitoso\", function () {\r",
+                  "    pm.response.to.have.status(200);\r",
+                  "});\r",
+                  "\r",
+                  "const data = pm.response.json();\r",
+                  "pm.environment.set(\"jwt_token\", data.token);\r",
+                  "pm.environment.set(\"user_id\", data.usuario.id_usuario);"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"correo\": \"{{user_email}}\",\r\n  \"password\": \"{{user_password}}\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": ""
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Catalogo",
+      "item": [
+        {
+          "name": "Actualizar disponibilidad",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"estado\": \"MANTENIMIENTO\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "PATCH http://localhost:8082/api/v1/ejemplares/{{copy_id}}/estado",
+              "protocol": "PATCH http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8082",
+              "path": [
+                "api",
+                "v1",
+                "ejemplares",
+                "{{copy_id}}",
+                "estado"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Estado",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "",
+                "variables": ""
+              }
+            },
+            "url": {
+              "raw": "GET http://localhost:8082/health",
+              "protocol": "GET http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8082",
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear categoria",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Categoría creada\", function () {\r",
+                  "    const data = pm.response.json();\r",
+                  "    pm.expect(data.errors).to.be.undefined;\r",
+                  "});\r",
+                  "\r",
+                  "pm.environment.set(\r",
+                  "    \"category_id\",\r",
+                  "    pm.response.json().data.crearCategoria.id_categoria\r",
+                  ");"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation CrearCategoria(\r\n  $nombre: String!\r\n  $descripcion: String\r\n) {\r\n  crearCategoria(\r\n    nombre: $nombre\r\n    descripcion: $descripcion\r\n  ) {\r\n    id_categoria\r\n    nombre\r\n    descripcion\r\n  }\r\n}",
+                "variables": "{\r\n  \"nombre\": \"Arquitectura de Software\",\r\n  \"descripcion\": \"Libros de arquitectura y desarrollo\"\r\n}"
+              }
+            },
+            "url": {
+              "raw": "POST http://localhost:8082/graphql",
+              "protocol": "POST http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8082",
+              "path": [
+                "graphql"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear autor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Autor creado\", function () {\r",
+                  "    const data = pm.response.json();\r",
+                  "    pm.expect(data.errors).to.be.undefined;\r",
+                  "});\r",
+                  "\r",
+                  "pm.environment.set(\r",
+                  "    \"author_id\",\r",
+                  "    pm.response.json().data.crearAutor.id_autor\r",
+                  ");"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation CrearAutor(\r\n  $nombre: String!\r\n  $apellido: String!\r\n) {\r\n  crearAutor(\r\n    nombre: $nombre\r\n    apellido: $apellido\r\n  ) {\r\n    id_autor\r\n    nombre\r\n    apellido\r\n  }\r\n}",
+                "variables": "{\r\n  \"nombre\": \"Robert\",\r\n  \"apellido\": \"Martin\"\r\n}"
+              }
+            },
+            "url": {
+              "raw": "POST http://localhost:8082/graphql",
+              "protocol": "POST http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8082",
+              "path": [
+                "graphql"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear libro",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Libro creado\", function () {\r",
+                  "    const data = pm.response.json();\r",
+                  "    pm.expect(data.errors).to.be.undefined;\r",
+                  "});\r",
+                  "\r",
+                  "pm.environment.set(\r",
+                  "    \"book_id\",\r",
+                  "    pm.response.json().data.crearLibro.id_libro\r",
+                  ");"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation CrearLibro(\r\n  $titulo: String!\r\n  $editorial: String!\r\n  $anio: Int!\r\n  $categoria: ID!\r\n  $autores: [ID!]!\r\n) {\r\n  crearLibro(\r\n    titulo: $titulo\r\n    editorial: $editorial\r\n    anio_publicacion: $anio\r\n    id_categoria: $categoria\r\n    ids_autores: $autores\r\n  ) {\r\n    id_libro\r\n    titulo\r\n    editorial\r\n    anio_publicacion\r\n    activo\r\n  }\r\n}",
+                "variables": "{\r\n  \"titulo\": \"Clean Architecture\",\r\n  \"editorial\": \"Pearson\",\r\n  \"anio\": 2017,\r\n  \"categoria\": \"{{category_id}}\",\r\n  \"autores\": [\"{{author_id}}\"]\r\n}"
+              }
+            },
+            "url": {
+              "raw": "POST http://localhost:8082/graphql",
+              "protocol": "POST http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8082",
+              "path": [
+                "graphql"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear ejemplar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Ejemplar creado y disponible\", function () {\r",
+                  "    const ejemplar = pm.response.json().data.crearEjemplar;\r",
+                  "    pm.expect(ejemplar.estado).to.eql(\"DISPONIBLE\");\r",
+                  "});\r",
+                  "\r",
+                  "pm.environment.set(\r",
+                  "    \"copy_id\",\r",
+                  "    pm.response.json().data.crearEjemplar.id_ejemplar\r",
+                  ");"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation CrearEjemplar(\r\n  $libro: ID!\r\n  $codigo: String!\r\n) {\r\n  crearEjemplar(\r\n    id_libro: $libro\r\n    codigo_inventario: $codigo\r\n  ) {\r\n    id_ejemplar\r\n    id_libro\r\n    codigo_inventario\r\n    estado\r\n  }\r\n}",
+                "variables": "{\r\n  \"libro\": \"{{book_id}}\",\r\n  \"codigo\": \"{{inventory_code}}\"\r\n}"
+              }
+            },
+            "url": {
+              "raw": "POST http://localhost:8082/graphql",
+              "protocol": "POST http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8082",
+              "path": [
+                "graphql"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Listar libros",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query {\r\n  libros {\r\n    id_libro\r\n    titulo\r\n    editorial\r\n    anio_publicacion\r\n    activo\r\n    categoria {\r\n      id_categoria\r\n      nombre\r\n    }\r\n    autores {\r\n      id_autor\r\n      nombre\r\n      apellido\r\n    }\r\n    ejemplares {\r\n      id_ejemplar\r\n      codigo_inventario\r\n      estado\r\n    }\r\n  }\r\n}",
+                "variables": "{}"
+              }
+            },
+            "url": {
+              "raw": "POST http://localhost:8082/graphql",
+              "protocol": "POST http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8082",
+              "path": [
+                "graphql"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar un libro",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query ConsultarLibro($id: ID!) {\r\n  libro(id: $id) {\r\n    id_libro\r\n    titulo\r\n    editorial\r\n    anio_publicacion\r\n    activo\r\n    categoria {\r\n      nombre\r\n    }\r\n    autores {\r\n      nombre\r\n      apellido\r\n    }\r\n    ejemplares {\r\n      id_ejemplar\r\n      codigo_inventario\r\n      estado\r\n    }\r\n  }\r\n}",
+                "variables": "{\r\n  \"id\": \"{{book_id}}\"\r\n}"
+              }
+            },
+            "url": {
+              "raw": "POST http://localhost:8082/graphql",
+              "protocol": "POST http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8082",
+              "path": [
+                "graphql"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Prestamos",
+      "item": [
+        {
+          "name": "Estado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8083/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear  prestamo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Préstamo creado\", function () {\r",
+                  "    const data = pm.response.json();\r",
+                  "    pm.expect(data.errors).to.be.undefined;\r",
+                  "});\r",
+                  "\r",
+                  "const prestamo = pm.response.json().data.crearPrestamo;\r",
+                  "\r",
+                  "pm.environment.set(\"loan_id\", prestamo.idPrestamo);\r",
+                  "pm.environment.set(\r",
+                  "    \"loan_detail_id\",\r",
+                  "    prestamo.detalles[0].idDetalle\r",
+                  ");"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation CrearPrestamo(\r\n  $usuario: UUID!\r\n  $ejemplares: [UUID!]!\r\n  $limite: DateTime!\r\n) {\r\n  crearPrestamo(\r\n    idUsuario: $usuario\r\n    idsEjemplares: $ejemplares\r\n    fechaLimite: $limite\r\n  ) {\r\n    idPrestamo\r\n    idUsuario\r\n    fechaPrestamo\r\n    fechaLimite\r\n    estado\r\n    detalles {\r\n      idDetalle\r\n      idEjemplar\r\n      estado\r\n    }\r\n  }\r\n}",
+                "variables": "{\r\n  \"usuario\": \"{{user_id}}\",\r\n  \"ejemplares\": [\"{{copy_id}}\"],\r\n  \"limite\": \"{{loan_due_date}}\"\r\n}"
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8083/graphql",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "graphql"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar prestamo",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query ConsultarPrestamo($id: UUID!) {\r\n  prestamo(id: $id) {\r\n    idPrestamo\r\n    idUsuario\r\n    fechaPrestamo\r\n    fechaLimite\r\n    estado\r\n    detalles {\r\n      idDetalle\r\n      idEjemplar\r\n      fechaDevolucion\r\n      estado\r\n    }\r\n  }\r\n}",
+                "variables": "{\r\n  \"id\": \"{{loan_id}}\"\r\n}"
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8083/graphql",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "graphql"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Listar prestamo por usuario",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query PrestamosUsuario($usuario: UUID!) {\r\n  prestamosPorUsuario(idUsuario: $usuario) {\r\n    idPrestamo\r\n    fechaPrestamo\r\n    fechaLimite\r\n    estado\r\n    detalles {\r\n      idDetalle\r\n      idEjemplar\r\n      estado\r\n    }\r\n  }\r\n}",
+                "variables": "{\r\n  \"usuario\": \"{{user_id}}\"\r\n}"
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8083/graphql",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "graphql"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Devolver ejemplar",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation DevolverEjemplar($detalle: UUID!) {\r\n  devolverEjemplar(idDetalle: $detalle) {\r\n    idDetalle\r\n    idEjemplar\r\n    fechaDevolucion\r\n    estado\r\n  }\r\n}",
+                "variables": "{\r\n  \"detalle\": \"{{loan_detail_id}}\"\r\n}"
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8083/graphql",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "graphql"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "procesar prestamos vencidos",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "POST http://localhost:8083/api/v1/prestamos/procesar-vencidos",
+              "protocol": "POST http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "api",
+                "v1",
+                "prestamos",
+                "procesar-vencidos"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Multas",
+      "item": [
+        {
+          "name": "Estado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8084/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8084",
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear multa",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Multa creada\", function () {\r",
+                  "    pm.response.to.have.status(201);\r",
+                  "});\r",
+                  "\r",
+                  "pm.environment.set(\r",
+                  "    \"fine_id\",\r",
+                  "    pm.response.json().id_multa\r",
+                  ");"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"id_prestamo\": \"{{loan_id}}\",\r\n  \"id_usuario\": \"{{user_id}}\",\r\n  \"dias_atraso\": 3\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8084/api/v1/multas",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8084",
+              "path": [
+                "api",
+                "v1",
+                "multas"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar multa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8084/api/v1/multas/{{fine_id}}",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8084",
+              "path": [
+                "api",
+                "v1",
+                "multas",
+                "{{fine_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Listar multas por usuario",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8084/api/v1/usuarios/{{user_id}}/multas",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8084",
+              "path": [
+                "api",
+                "v1",
+                "usuarios",
+                "{{user_id}}",
+                "multas"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Pagar multa",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Multa pagada\", function () {\r",
+                  "    pm.response.to.have.status(200);\r",
+                  "    pm.expect(pm.response.json().estado).to.eql(\"PAGADA\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8084/api/v1/multas/{{fine_id}}/pagar",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8084",
+              "path": [
+                "api",
+                "v1",
+                "multas",
+                "{{fine_id}}",
+                "pagar"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "jwt_token",
+        "type": "string"
+      }
+    ]
+  }
+}

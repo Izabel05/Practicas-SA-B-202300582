@@ -1,0 +1,60 @@
+services:
+  api-gateway:
+    build:
+      context: ./api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - autenticacion-ms
+      - catalogo-ms
+      - prestamos-ms
+      - multas-ms
+    restart: unless-stopped
+
+  autenticacion-ms:
+    build:
+      context: ./autenticacion-ms
+    environment:
+      PORT: "8081"
+      DATABASE_URL: ${AUTH_DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_DURATION_MINUTES: ${JWT_DURATION_MINUTES:-60}
+    expose:
+      - "8081"
+    restart: unless-stopped
+
+  catalogo-ms:
+    build:
+      context: ./catalogo-ms
+    environment:
+      PORT: "8082"
+      DATABASE_URL: ${CATALOG_DATABASE_URL}
+    expose:
+      - "8082"
+    restart: unless-stopped
+
+  multas-ms:
+    build:
+      context: ./multas-ms
+    environment:
+      PORT: "8084"
+      DATABASE_URL: ${FINES_DATABASE_URL}
+      FINE_DAILY_RATE: ${FINE_DAILY_RATE:-5.00}
+    expose:
+      - "8084"
+    restart: unless-stopped
+
+  prestamos-ms:
+    build:
+      context: ./prestamos-ms
+    environment:
+      PORT: "8083"
+      DATABASE_URL: ${LOANS_DATABASE_URL}
+      CATALOG_URL: http://catalogo-ms:8082
+      FINES_URL: http://multas-ms:8084
+    expose:
+      - "8083"
+    depends_on:
+      - catalogo-ms
+      - multas-ms
+    restart: unless-stopped
