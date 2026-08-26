@@ -1,0 +1,44 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE IF NOT EXISTS categorias (
+    id_categoria UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nombre VARCHAR(50) NOT NULL UNIQUE,
+    descripcion VARCHAR(500)
+);
+
+CREATE TABLE IF NOT EXISTS autores (
+    id_autor UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nombre VARCHAR(50) NOT NULL,
+    apellido VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS libros (
+    id_libro UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    titulo VARCHAR(50) NOT NULL,
+    editorial VARCHAR(100) NOT NULL,
+    anio_publicacion INTEGER NOT NULL,
+    id_categoria UUID NOT NULL REFERENCES categorias(id_categoria) ON DELETE RESTRICT,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    fecha_creacion TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT ck_libros_anio CHECK (anio_publicacion >= 1450)
+);
+
+CREATE TABLE IF NOT EXISTS libro_autores (
+    id_libro UUID NOT NULL REFERENCES libros(id_libro) ON DELETE CASCADE,
+    id_autor UUID NOT NULL REFERENCES autores(id_autor) ON DELETE RESTRICT,
+    PRIMARY KEY (id_libro, id_autor)
+);
+
+CREATE TABLE IF NOT EXISTS ejemplares (
+    id_ejemplar UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_libro UUID NOT NULL REFERENCES libros(id_libro) ON DELETE RESTRICT,
+    codigo_inventario VARCHAR(50) NOT NULL UNIQUE,
+    estado VARCHAR(50) NOT NULL DEFAULT 'DISPONIBLE',
+    fecha_creacion TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT ck_ejemplares_estado CHECK (estado IN ('DISPONIBLE', 'PRESTADO', 'MANTENIMIENTO'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_libros_categoria ON libros(id_categoria);
+CREATE INDEX IF NOT EXISTS idx_ejemplares_libro ON ejemplares(id_libro);

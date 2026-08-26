@@ -1,0 +1,19 @@
+openapi: 3.0.3
+info:
+  title: API REST interna de Préstamos
+  version: 1.0.0
+servers:
+  - url: http://localhost:8083
+paths:
+  /health:
+    get:
+      summary: Comprueba el estado del servicio
+      responses:
+        "200":
+          description: Servicio disponible
+  /api/v1/prestamos/procesar-vencidos:
+    post:
+      summary: Detecta préstamos vencidos y solicita la creación de multas
+      responses:
+        "200":
+          description: Préstamos vencidos procesados

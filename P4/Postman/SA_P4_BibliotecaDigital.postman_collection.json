@@ -16,14 +16,15 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "GET http://localhost:8081/health",
-              "protocol": "GET http",
+              "raw": "http://localhost:8080/health/auth",
+              "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8081",
+              "port": "8080",
               "path": [
-                "health"
+                "health",
+                "auth"
               ]
             }
           },
@@ -67,12 +68,12 @@
               }
             },
             "url": {
-              "raw": "POST http://localhost:8081/api/v1/auth/register",
-              "protocol": "POST http",
+              "raw": "http://localhost:8080/api/v1/auth/register",
+              "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8081",
+              "port": "8080",
               "path": [
                 "api",
                 "v1",
@@ -119,7 +120,18 @@
               }
             },
             "url": {
-              "raw": ""
+              "raw": "http://localhost:8080/api/v1/auth/login",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
             }
           },
           "response": []
@@ -144,12 +156,12 @@
               }
             },
             "url": {
-              "raw": "PATCH http://localhost:8082/api/v1/ejemplares/{{copy_id}}/estado",
-              "protocol": "PATCH http",
+              "raw": "http://localhost:8080/api/v1/ejemplares/{{copy_id}}/estado",
+              "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8082",
+              "port": "8080",
               "path": [
                 "api",
                 "v1",
@@ -177,14 +189,15 @@
               }
             },
             "url": {
-              "raw": "GET http://localhost:8082/health",
-              "protocol": "GET http",
+              "raw": "http://localhost:8080/health/catalogo",
+              "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8082",
+              "port": "8080",
               "path": [
-                "health"
+                "health",
+                "catalogo"
               ]
             }
           },
@@ -223,13 +236,14 @@
               }
             },
             "url": {
-              "raw": "POST http://localhost:8082/graphql",
-              "protocol": "POST http",
+              "raw": "http://localhost:8080/catalogo/graphql",
+              "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8082",
+              "port": "8080",
               "path": [
+                "catalogo",
                 "graphql"
               ]
             }
@@ -269,13 +283,14 @@
               }
             },
             "url": {
-              "raw": "POST http://localhost:8082/graphql",
-              "protocol": "POST http",
+              "raw": "http://localhost:8080/catalogo/graphql",
+              "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8082",
+              "port": "8080",
               "path": [
+                "catalogo",
                 "graphql"
               ]
             }
@@ -315,13 +330,14 @@
               }
             },
             "url": {
-              "raw": "POST http://localhost:8082/graphql",
-              "protocol": "POST http",
+              "raw": "http://localhost:8080/catalogo/graphql",
+              "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8082",
+              "port": "8080",
               "path": [
+                "catalogo",
                 "graphql"
               ]
             }
@@ -361,13 +377,14 @@
               }
             },
             "url": {
-              "raw": "POST http://localhost:8082/graphql",
-              "protocol": "POST http",
+              "raw": "http://localhost:8080/catalogo/graphql",
+              "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8082",
+              "port": "8080",
               "path": [
+                "catalogo",
                 "graphql"
               ]
             }
@@ -387,13 +404,14 @@
               }
             },
             "url": {
-              "raw": "POST http://localhost:8082/graphql",
-              "protocol": "POST http",
+              "raw": "http://localhost:8080/catalogo/graphql",
+              "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8082",
+              "port": "8080",
               "path": [
+                "catalogo",
                 "graphql"
               ]
             }
@@ -413,13 +431,14 @@
               }
             },
             "url": {
-              "raw": "POST http://localhost:8082/graphql",
-              "protocol": "POST http",
+              "raw": "http://localhost:8080/catalogo/graphql",
+              "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8082",
+              "port": "8080",
               "path": [
+                "catalogo",
                 "graphql"
               ]
             }
@@ -437,14 +456,15 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8083/health",
+              "raw": "http://localhost:8080/health/prestamos",
               "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8083",
+              "port": "8080",
               "path": [
-                "health"
+                "health",
+                "prestamos"
               ]
             }
           },
@@ -486,13 +506,14 @@
               }
             },
             "url": {
-              "raw": "http://localhost:8083/graphql",
+              "raw": "http://localhost:8080/prestamos/graphql",
               "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8083",
+              "port": "8080",
               "path": [
+                "prestamos",
                 "graphql"
               ]
             }
@@ -512,13 +533,14 @@
               }
             },
             "url": {
-              "raw": "http://localhost:8083/graphql",
+              "raw": "http://localhost:8080/prestamos/graphql",
               "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8083",
+              "port": "8080",
               "path": [
+                "prestamos",
                 "graphql"
               ]
             }
@@ -538,13 +560,14 @@
               }
             },
             "url": {
-              "raw": "http://localhost:8083/graphql",
+              "raw": "http://localhost:8080/prestamos/graphql",
               "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8083",
+              "port": "8080",
               "path": [
+                "prestamos",
                 "graphql"
               ]
             }
@@ -564,13 +587,14 @@
               }
             },
             "url": {
-              "raw": "http://localhost:8083/graphql",
+              "raw": "http://localhost:8080/prestamos/graphql",
               "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8083",
+              "port": "8080",
               "path": [
+                "prestamos",
                 "graphql"
               ]
             }
@@ -583,12 +607,12 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "POST http://localhost:8083/api/v1/prestamos/procesar-vencidos",
-              "protocol": "POST http",
+              "raw": "http://localhost:8080/api/v1/prestamos/procesar-vencidos",
+              "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8083",
+              "port": "8080",
               "path": [
                 "api",
                 "v1",
@@ -610,14 +634,15 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8084/health",
+              "raw": "http://localhost:8080/health/multas",
               "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8084",
+              "port": "8080",
               "path": [
-                "health"
+                "health",
+                "multas"
               ]
             }
           },
@@ -657,12 +682,12 @@
               }
             },
             "url": {
-              "raw": "http://localhost:8084/api/v1/multas",
+              "raw": "http://localhost:8080/api/v1/multas",
               "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8084",
+              "port": "8080",
               "path": [
                 "api",
                 "v1",
@@ -678,12 +703,12 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8084/api/v1/multas/{{fine_id}}",
+              "raw": "http://localhost:8080/api/v1/multas/{{fine_id}}",
               "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8084",
+              "port": "8080",
               "path": [
                 "api",
                 "v1",
@@ -700,12 +725,12 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8084/api/v1/usuarios/{{user_id}}/multas",
+              "raw": "http://localhost:8080/api/v1/usuarios/{{user_id}}/multas",
               "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8084",
+              "port": "8080",
               "path": [
                 "api",
                 "v1",
@@ -738,12 +763,12 @@
             "method": "PATCH",
             "header": [],
             "url": {
-              "raw": "http://localhost:8084/api/v1/multas/{{fine_id}}/pagar",
+              "raw": "http://localhost:8080/api/v1/multas/{{fine_id}}/pagar",
               "protocol": "http",
               "host": [
                 "localhost"
               ],
-              "port": "8084",
+              "port": "8080",
               "path": [
                 "api",
                 "v1",
