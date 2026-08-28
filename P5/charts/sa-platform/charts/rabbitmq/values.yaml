@@ -1,0 +1,7 @@
+fullnameOverride: ""
+image: {repository: rabbitmq, tag: "4.1-management-alpine", pullPolicy: IfNotPresent}
+auth: {username: sa_user, password: ""}
+persistence: {size: 2Gi}
+resources:
+  requests: {cpu: 100m, memory: 256Mi}
+  limits: {cpu: 500m, memory: 512Mi}

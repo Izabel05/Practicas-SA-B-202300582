@@ -1,2 +1,47 @@
-# Valores propios del microservicio de prestamos.
-
+replicaCount: 2
+fullnameOverride: ""
+image:
+  repository: sa-p5/prestamos-ms
+  tag: "0.2.2"
+  pullPolicy: IfNotPresent
+serviceAccount:
+  create: true
+  name: ""
+service:
+  type: ClusterIP
+  port: 8083
+config:
+  logLevel: info
+database:
+  secretName: loans-postgresql-credentials
+  secretKey: database-url
+dependencies:
+  catalogUrl: http://catalogo-ms:8082
+rabbitmq:
+  secretName: rabbitmq-credentials
+  secretKey: amqp-url
+  queue: multa.requerida
+resources:
+  requests: {cpu: 50m, memory: 96Mi}
+  limits: {cpu: 300m, memory: 192Mi}
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+probes:
+  startup: {failureThreshold: 30, periodSeconds: 2}
+  readiness: {initialDelaySeconds: 2, periodSeconds: 5}
+  liveness: {initialDelaySeconds: 5, periodSeconds: 10}
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  seccompProfile: {type: RuntimeDefault}
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities: {drop: [ALL]}

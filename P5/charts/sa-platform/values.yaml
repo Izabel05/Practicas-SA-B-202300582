@@ -1,3 +1,150 @@
-# Valores base compartidos por toda la plataforma.
-# Se completaran conforme se implementen los recursos de Kubernetes.
+global:
+  namespace: sa-p5
 
+cronjob1:
+  enabled: true
+  schedule: "*/2 * * * *"
+  timeZone: America/Guatemala
+  studentId: "202300582"
+  image: {repository: postgres, tag: "17-alpine", pullPolicy: IfNotPresent}
+  database: {secretName: cronjobs-postgresql-credentials, secretKey: database-url}
+  concurrencyPolicy: Forbid
+  backoffLimit: 3
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  resources:
+    requests: {cpu: 25m, memory: 32Mi}
+    limits: {cpu: 150m, memory: 128Mi}
+
+cronjob2:
+  enabled: true
+  schedule: "*/10 * * * *"
+  timeZone: America/Guatemala
+  image: {repository: sa-p5/cronjobs-worker, tag: "0.1.0", pullPolicy: IfNotPresent}
+  database: {secretName: cronjobs-postgresql-credentials, secretKey: database-url}
+  rabbitmq: {secretName: rabbitmq-credentials, secretKey: amqp-url, queue: resumen.ejecuciones}
+  concurrencyPolicy: Forbid
+  backoffLimit: 3
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  resources:
+    requests: {cpu: 25m, memory: 48Mi}
+    limits: {cpu: 200m, memory: 128Mi}
+
+summaryConsumer:
+  enabled: true
+  replicaCount: 1
+  image: {repository: sa-p5/cronjobs-worker, tag: "0.1.0", pullPolicy: IfNotPresent}
+  database: {secretName: cronjobs-postgresql-credentials, secretKey: database-url}
+  rabbitmq: {secretName: rabbitmq-credentials, secretKey: amqp-url, queue: resumen.ejecuciones}
+  resources:
+    requests: {cpu: 25m, memory: 48Mi}
+    limits: {cpu: 200m, memory: 128Mi}
+
+networkPolicies:
+  enabled: true
+  ingressControllerNamespace: ingress-nginx
+
+resourceQuota:
+  enabled: true
+  hard:
+    requests.cpu: "4"
+    requests.memory: 6Gi
+    limits.cpu: "12"
+    limits.memory: 12Gi
+    requests.storage: 20Gi
+    persistentvolumeclaims: "10"
+    pods: "40"
+    services: "20"
+    configmaps: "30"
+    secrets: "30"
+
+limitRange:
+  enabled: true
+  container:
+    defaultRequest:
+      cpu: 50m
+      memory: 64Mi
+    default:
+      cpu: 500m
+      memory: 512Mi
+    min:
+      cpu: 10m
+      memory: 32Mi
+    max:
+      cpu: "2"
+      memory: 2Gi
+  persistentVolumeClaim:
+    min:
+      storage: 1Gi
+    max:
+      storage: 10Gi
+
+ingress:
+  enabled: true
+  className: nginx
+  host: biblioteca.local
+  annotations: {}
+  serviceName: api-gateway
+  servicePort: 8080
+
+api-gateway:
+  fullnameOverride: api-gateway
+  upstreams:
+    resolver: kube-dns.kube-system.svc.cluster.local
+    autenticacion: autenticacion-ms.sa-p5.svc.cluster.local:8081
+    catalogo: catalogo-ms.sa-p5.svc.cluster.local:8082
+    prestamos: prestamos-ms.sa-p5.svc.cluster.local:8083
+    multas: multas-ms.sa-p5.svc.cluster.local:8084
+
+auth-database:
+  fullnameOverride: auth-postgresql
+
+autenticacion-ms:
+  fullnameOverride: autenticacion-ms
+  database:
+    secretName: auth-postgresql-credentials
+    secretKey: database-url
+
+catalog-database:
+  fullnameOverride: catalog-postgresql
+
+catalogo-ms:
+  fullnameOverride: catalogo-ms
+  database:
+    secretName: catalog-postgresql-credentials
+    secretKey: database-url
+
+loans-database:
+  fullnameOverride: loans-postgresql
+
+prestamos-ms:
+  fullnameOverride: prestamos-ms
+  database:
+    secretName: loans-postgresql-credentials
+    secretKey: database-url
+  dependencies:
+    catalogUrl: http://catalogo-ms.sa-p5.svc.cluster.local:8082
+  rabbitmq:
+    secretName: rabbitmq-credentials
+    secretKey: amqp-url
+    queue: multa.requerida
+
+fines-database:
+  fullnameOverride: fines-postgresql
+
+cronjobs-database:
+  fullnameOverride: cronjobs-postgresql
+
+rabbitmq:
+  fullnameOverride: rabbitmq
+
+multas-ms:
+  fullnameOverride: multas-ms
+  database:
+    secretName: fines-postgresql-credentials
+    secretKey: database-url
+  rabbitmq:
+    secretName: rabbitmq-credentials
+    secretKey: amqp-url
+    queue: multa.requerida

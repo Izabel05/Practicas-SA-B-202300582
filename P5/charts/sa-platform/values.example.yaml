@@ -1,3 +1,27 @@
-# Ejemplo de configuracion con credenciales ficticias.
-# No colocar secretos reales en este archivo.
+# Copiar a un archivo local no versionado si se desean credenciales fijas.
+# Los valores siguientes son ficticios y no deben usarse en produccion.
+auth-database:
+  auth:
+    password: "ejemplo-password-postgresql-no-real"
 
+autenticacion-ms:
+  auth:
+    jwtSecret: "ejemplo-jwt-secret-no-real-de-al-menos-32-caracteres"
+
+catalog-database:
+  auth:
+    password: "ejemplo-password-catalogo-no-real"
+
+loans-database:
+  auth:
+    password: "ejemplo-password-prestamos-no-real"
+
+fines-database:
+  auth:
+    password: "ejemplo-password-multas-no-real"
+cronjobs-database:
+  auth:
+    password: "ejemplo-password-cronjobs-no-real"
+rabbitmq:
+  auth:
+    password: "ejemplo-password-rabbitmq-no-real"

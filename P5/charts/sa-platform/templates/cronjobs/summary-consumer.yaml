@@ -1,0 +1,41 @@
+{{- if .Values.summaryConsumer.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: summary-consumer
+  namespace: {{ include "sa-platform.namespace" . }}
+  labels: {app.kubernetes.io/name: summary-consumer, app.kubernetes.io/instance: {{ .Release.Name }}}
+spec:
+  replicas: {{ .Values.summaryConsumer.replicaCount }}
+  strategy: {type: RollingUpdate, rollingUpdate: {maxUnavailable: 0, maxSurge: 1}}
+  selector:
+    matchLabels: {app.kubernetes.io/name: summary-consumer, app.kubernetes.io/instance: {{ .Release.Name }}}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: summary-consumer, app.kubernetes.io/instance: {{ .Release.Name }}}
+    spec:
+      serviceAccountName: summary-consumer
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: summary-consumer
+          image: "{{ .Values.summaryConsumer.image.repository }}:{{ .Values.summaryConsumer.image.tag }}"
+          imagePullPolicy: {{ .Values.summaryConsumer.image.pullPolicy }}
+          args: ["consumer"]
+          env:
+            - name: DATABASE_URL
+              valueFrom: {secretKeyRef: {name: {{ .Values.summaryConsumer.database.secretName }}, key: {{ .Values.summaryConsumer.database.secretKey }}}}
+            - name: AMQP_URL
+              valueFrom: {secretKeyRef: {name: {{ .Values.summaryConsumer.rabbitmq.secretName }}, key: {{ .Values.summaryConsumer.rabbitmq.secretKey }}}}
+            - {name: QUEUE_NAME, value: {{ .Values.summaryConsumer.rabbitmq.queue | quote }}}
+            - {name: HOME, value: /tmp}
+          startupProbe: {exec: {command: ["test", "-f", "/tmp/consumer-ready"]}, failureThreshold: 30, periodSeconds: 2}
+          readinessProbe: {exec: {command: ["test", "-f", "/tmp/consumer-ready"]}, periodSeconds: 5}
+          livenessProbe: {exec: {command: ["test", "-f", "/tmp/consumer-ready"]}, periodSeconds: 15}
+          resources:
+            {{- toYaml .Values.summaryConsumer.resources | nindent 12 }}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          volumeMounts: [{name: tmp, mountPath: /tmp}]
+      volumes:
+        - {name: tmp, emptyDir: {}}
+{{- end }}

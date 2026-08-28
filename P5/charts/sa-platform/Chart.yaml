@@ -2,6 +2,29 @@ apiVersion: v2
 name: sa-platform
 description: Chart padre de la plataforma de biblioteca digital para la Practica 5
 type: application
-version: 0.1.0
-appVersion: "0.1.0"
+version: 0.2.1
+appVersion: "0.2.1"
 
+dependencies:
+  - name: auth-database
+    version: 0.1.0
+  - name: catalog-database
+    version: 0.1.0
+  - name: loans-database
+    version: 0.1.0
+  - name: fines-database
+    version: 0.1.0
+  - name: cronjobs-database
+    version: 0.1.0
+  - name: rabbitmq
+    version: 0.1.0
+  - name: api-gateway
+    version: 0.1.0
+  - name: autenticacion-ms
+    version: 0.1.0
+  - name: catalogo-ms
+    version: 0.1.0
+  - name: prestamos-ms
+    version: 0.1.0
+  - name: multas-ms
+    version: 0.1.0

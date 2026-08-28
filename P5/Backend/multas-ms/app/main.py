@@ -6,6 +6,7 @@ from psycopg_pool import ConnectionPool
 
 from app.config.settings import Settings
 from app.models.errors import ConflictError, InvalidInputError, NotFoundError
+from app.messaging.fine_consumer import FineEventConsumer
 from app.repository.postgres_fine_repository import PostgresFineRepository
 from app.routes.routes import register_routes
 from app.service.fine_service import FineService
@@ -14,22 +15,31 @@ from app.service.fine_service import FineService
 def create_app(settings: Settings | None = None, fine_service: FineService | None = None) -> FastAPI:
     selected_settings = settings
     pool: ConnectionPool | None = None
+    consumer: FineEventConsumer | None = None
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        nonlocal pool
+        nonlocal pool, consumer
         if fine_service is None:
             runtime_settings = selected_settings or Settings.from_environment()
-            pool = ConnectionPool(runtime_settings.database_url, open=False)
+            pool = ConnectionPool(runtime_settings.database_url, open=False, check=ConnectionPool.check_connection)
             pool.open()
             pool.wait()
             app.state.fine_service = FineService(
                 PostgresFineRepository(pool),
                 runtime_settings.daily_rate,
             )
+            consumer = FineEventConsumer(
+                runtime_settings.rabbitmq_url,
+                runtime_settings.fine_queue,
+                app.state.fine_service,
+            )
+            consumer.start()
         else:
             app.state.fine_service = fine_service
         yield
+        if consumer is not None:
+            consumer.close()
         if pool is not None:
             pool.close()
 

@@ -1,3 +1,3 @@
 ## Diagrama de Arquitectura
 
-![alt text](image.png)
+![alt text](Diagrama-Arq.png)

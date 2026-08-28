@@ -1,0 +1,44 @@
+{{- if .Values.cronjob2.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cronjob2
+  namespace: {{ include "sa-platform.namespace" . }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+spec:
+  schedule: {{ required "cronjob2.schedule es obligatorio" .Values.cronjob2.schedule | quote }}
+  timeZone: {{ default "America/Guatemala" .Values.cronjob2.timeZone | quote }}
+  concurrencyPolicy: {{ .Values.cronjob2.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ .Values.cronjob2.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.cronjob2.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.cronjob2.backoffLimit }}
+      template:
+        metadata:
+          labels: {app.kubernetes.io/name: cronjob2, app.kubernetes.io/instance: {{ .Release.Name }}}
+        spec:
+          serviceAccountName: cronjob2
+          automountServiceAccountToken: false
+          restartPolicy: Never
+          securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
+          containers:
+            - name: cronjob2
+              image: "{{ .Values.cronjob2.image.repository }}:{{ .Values.cronjob2.image.tag }}"
+              imagePullPolicy: {{ .Values.cronjob2.image.pullPolicy }}
+              args: ["producer"]
+              env:
+                - name: DATABASE_URL
+                  valueFrom: {secretKeyRef: {name: {{ .Values.cronjob2.database.secretName }}, key: {{ .Values.cronjob2.database.secretKey }}}}
+                - name: AMQP_URL
+                  valueFrom: {secretKeyRef: {name: {{ .Values.cronjob2.rabbitmq.secretName }}, key: {{ .Values.cronjob2.rabbitmq.secretKey }}}}
+                - {name: QUEUE_NAME, value: {{ .Values.cronjob2.rabbitmq.queue | quote }}}
+                - {name: HOME, value: /tmp}
+              resources:
+                {{- toYaml .Values.cronjob2.resources | nindent 16 }}
+              securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+              volumeMounts: [{name: tmp, mountPath: /tmp}]
+          volumes:
+            - {name: tmp, emptyDir: {}}
+{{- end }}

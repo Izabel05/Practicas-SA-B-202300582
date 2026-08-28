@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "prestamos-ms.fullname" . }}
+  namespace: {{ include "prestamos-ms.namespace" . }}
+  labels: {{- include "prestamos-ms.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxUnavailable: 0, maxSurge: 1}
+  selector:
+    matchLabels: {{- include "prestamos-ms.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      labels: {{- include "prestamos-ms.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "prestamos-ms.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: prestamos-ms
+          image: "{{ required "image.repository es obligatorio" .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext: {{- toYaml .Values.securityContext | nindent 12 }}
+          envFrom:
+            - configMapRef: {name: {{ include "prestamos-ms.fullname" . }}}
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "database.secretName es obligatorio" .Values.database.secretName }}
+                  key: {{ required "database.secretKey es obligatorio" .Values.database.secretKey }}
+            - name: RABBITMQ_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "rabbitmq.secretName es obligatorio" .Values.rabbitmq.secretName }}
+                  key: {{ required "rabbitmq.secretKey es obligatorio" .Values.rabbitmq.secretKey }}
+          ports:
+            - {name: http, containerPort: {{ .Values.service.port }}}
+          startupProbe:
+            httpGet: {path: /health, port: http}
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
