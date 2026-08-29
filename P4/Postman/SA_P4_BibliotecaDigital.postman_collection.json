@@ -1,7 +1,7 @@
 {
   "info": {
     "_postman_id": "07217300-8ad0-49cf-b241-7c4289db0ab5",
-    "name": "SA_P4_BibliotecaDigital",
+    "name": "SA_P5_BibliotecaDigital",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "49186250",
     "_collection_link": "https://go.postman.co/collection/49186250-07217300-8ad0-49cf-b241-7c4289db0ab5?source=collection_link"
@@ -16,12 +16,10 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8080/health/auth",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/health/auth",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "health",
                 "auth"
@@ -68,12 +66,10 @@
               }
             },
             "url": {
-              "raw": "http://localhost:8080/api/v1/auth/register",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/api/v1/auth/register",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "api",
                 "v1",
@@ -120,12 +116,10 @@
               }
             },
             "url": {
-              "raw": "http://localhost:8080/api/v1/auth/login",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/api/v1/auth/login",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "api",
                 "v1",
@@ -156,12 +150,10 @@
               }
             },
             "url": {
-              "raw": "http://localhost:8080/api/v1/ejemplares/{{copy_id}}/estado",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/api/v1/ejemplares/{{copy_id}}/estado",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "api",
                 "v1",
@@ -189,12 +181,10 @@
               }
             },
             "url": {
-              "raw": "http://localhost:8080/health/catalogo",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/health/catalogo",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "health",
                 "catalogo"
@@ -236,12 +226,10 @@
               }
             },
             "url": {
-              "raw": "http://localhost:8080/catalogo/graphql",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/catalogo/graphql",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "catalogo",
                 "graphql"
@@ -283,12 +271,10 @@
               }
             },
             "url": {
-              "raw": "http://localhost:8080/catalogo/graphql",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/catalogo/graphql",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "catalogo",
                 "graphql"
@@ -330,12 +316,10 @@
               }
             },
             "url": {
-              "raw": "http://localhost:8080/catalogo/graphql",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/catalogo/graphql",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "catalogo",
                 "graphql"
@@ -377,12 +361,10 @@
               }
             },
             "url": {
-              "raw": "http://localhost:8080/catalogo/graphql",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/catalogo/graphql",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "catalogo",
                 "graphql"
@@ -404,12 +386,10 @@
               }
             },
             "url": {
-              "raw": "http://localhost:8080/catalogo/graphql",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/catalogo/graphql",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "catalogo",
                 "graphql"
@@ -431,12 +411,10 @@
               }
             },
             "url": {
-              "raw": "http://localhost:8080/catalogo/graphql",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/catalogo/graphql",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "catalogo",
                 "graphql"
@@ -456,12 +434,10 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8080/health/prestamos",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/health/prestamos",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "health",
                 "prestamos"
@@ -506,12 +482,10 @@
               }
             },
             "url": {
-              "raw": "http://localhost:8080/prestamos/graphql",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/prestamos/graphql",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "prestamos",
                 "graphql"
@@ -533,12 +507,10 @@
               }
             },
             "url": {
-              "raw": "http://localhost:8080/prestamos/graphql",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/prestamos/graphql",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "prestamos",
                 "graphql"
@@ -560,12 +532,10 @@
               }
             },
             "url": {
-              "raw": "http://localhost:8080/prestamos/graphql",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/prestamos/graphql",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "prestamos",
                 "graphql"
@@ -587,12 +557,10 @@
               }
             },
             "url": {
-              "raw": "http://localhost:8080/prestamos/graphql",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/prestamos/graphql",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "prestamos",
                 "graphql"
@@ -602,17 +570,32 @@
           "response": []
         },
         {
-          "name": "procesar prestamos vencidos",
+          "name": "Procesar vencidos - publicar eventos en RabbitMQ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Solicitud de procesamiento aceptada\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()).to.be.an(\"array\");",
+                  "});",
+                  "",
+                  "pm.environment.set(\"rabbit_event_count\", pm.response.json().length);"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "http://localhost:8080/api/v1/prestamos/procesar-vencidos",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/api/v1/prestamos/procesar-vencidos",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "api",
                 "v1",
@@ -634,12 +617,10 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8080/health/multas",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/health/multas",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "health",
                 "multas"
@@ -649,7 +630,7 @@
           "response": []
         },
         {
-          "name": "Crear multa",
+          "name": "Crear multa directamente (REST, prueba manual)",
           "event": [
             {
               "listen": "test",
@@ -682,12 +663,10 @@
               }
             },
             "url": {
-              "raw": "http://localhost:8080/api/v1/multas",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/api/v1/multas",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "api",
                 "v1",
@@ -703,12 +682,10 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8080/api/v1/multas/{{fine_id}}",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/api/v1/multas/{{fine_id}}",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "api",
                 "v1",
@@ -720,17 +697,51 @@
           "response": []
         },
         {
-          "name": "Listar multas por usuario",
+          "name": "Verificar multas creadas por RabbitMQ",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// RabbitMQ procesa el evento de manera asíncrona.",
+                  "// Ejecuta esta petición después de 'Procesar vencidos'."
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Consulta de multas exitosa\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()).to.be.an(\"array\");",
+                  "});",
+                  "",
+                  "const fines = pm.response.json();",
+                  "const loanFine = fines.find(fine => fine.id_prestamo === pm.environment.get(\"loan_id\"));",
+                  "if (loanFine) {",
+                  "    pm.environment.set(\"fine_id\", loanFine.id_multa);",
+                  "}",
+                  "",
+                  "pm.test(\"La multa asíncrona del préstamo ya fue consumida\", function () {",
+                  "    pm.expect(loanFine, \"RabbitMQ aún puede estar procesando el evento\").to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8080/api/v1/usuarios/{{user_id}}/multas",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/api/v1/usuarios/{{user_id}}/multas",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "api",
                 "v1",
@@ -763,12 +774,10 @@
             "method": "PATCH",
             "header": [],
             "url": {
-              "raw": "http://localhost:8080/api/v1/multas/{{fine_id}}/pagar",
-              "protocol": "http",
+              "raw": "{{gateway_base_url}}/api/v1/multas/{{fine_id}}/pagar",
               "host": [
-                "localhost"
+                "{{gateway_base_url}}"
               ],
-              "port": "8080",
               "path": [
                 "api",
                 "v1",
@@ -788,7 +797,7 @@
     "bearer": [
       {
         "key": "token",
-        "value": "jwt_token",
+        "value": "{{jwt_token}}",
         "type": "string"
       }
     ]
