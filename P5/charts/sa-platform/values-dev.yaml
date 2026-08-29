@@ -3,14 +3,14 @@ api-gateway:
   autoscaling:
     minReplicas: 2
   image:
-    tag: "0.1.0-dev"
+    tag: "0.1.1"
 
 autenticacion-ms:
   replicaCount: 2
   autoscaling:
     minReplicas: 2
   image:
-    tag: "0.1.0-dev"
+    tag: "0.1.0"
   config:
     logLevel: debug
   resources:
@@ -30,7 +30,7 @@ catalogo-ms:
   autoscaling:
     minReplicas: 2
   image:
-    tag: "0.1.0-dev"
+    tag: "0.1.0"
   config:
     logLevel: debug
   resources:
@@ -50,7 +50,7 @@ prestamos-ms:
   autoscaling:
     minReplicas: 2
   image:
-    tag: "0.1.0-dev"
+    tag: "0.2.2"
   config:
     logLevel: debug
   resources:
