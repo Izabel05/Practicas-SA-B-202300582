@@ -1,1 +1,0 @@
-"""Microservicio de préstamos."""

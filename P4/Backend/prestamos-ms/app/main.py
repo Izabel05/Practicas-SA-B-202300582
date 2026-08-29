@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from psycopg_pool import ConnectionPool
 
 from app.clients.catalog_client import HttpCatalogClient
-from app.clients.fine_client import HttpFineClient
+from app.clients.fine_client import RabbitFineClient
 from app.config.settings import Settings
 from app.repository.postgres_loan_repository import PostgresLoanRepository
 from app.routes.routes import register_routes
@@ -23,13 +23,17 @@ def create_app(
         nonlocal pool
         if loan_service is None:
             runtime_settings = selected_settings or Settings.from_environment()
-            pool = ConnectionPool(runtime_settings.database_url, open=False)
+            pool = ConnectionPool(
+                runtime_settings.database_url,
+                open=False,
+                check=ConnectionPool.check_connection,
+            )
             pool.open()
             pool.wait()
             app.state.loan_service = LoanService(
                 PostgresLoanRepository(pool),
                 HttpCatalogClient(runtime_settings.catalog_url),
-                HttpFineClient(runtime_settings.fines_url),
+                RabbitFineClient(runtime_settings.rabbitmq_url, runtime_settings.fine_queue),
             )
         else:
             app.state.loan_service = loan_service
