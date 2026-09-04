@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Service
+metadata: {name: {{ include "cronjobs-database.fullname" . }}, namespace: {{ include "cronjobs-database.namespace" . }}}
+spec:
+  clusterIP: None
+  selector:
+    {{- include "cronjobs-database.selectorLabels" . | nindent 4 }}
+  ports:
+    - {name: postgresql, port: 5432, targetPort: postgresql}

@@ -1,0 +1,20 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "prestamos-ms.fullname" . }}
+  namespace: {{ include "prestamos-ms.namespace" . }}
+rules: []
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "prestamos-ms.fullname" . }}
+  namespace: {{ include "prestamos-ms.namespace" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "prestamos-ms.serviceAccountName" . }}
+    namespace: {{ include "prestamos-ms.namespace" . }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "prestamos-ms.fullname" . }}

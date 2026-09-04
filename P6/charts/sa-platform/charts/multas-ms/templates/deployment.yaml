@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "multas-ms.fullname" . }}
+  namespace: {{ include "multas-ms.namespace" . }}
+  labels: {{- include "multas-ms.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxUnavailable: 0, maxSurge: 1}
+  selector:
+    matchLabels: {{- include "multas-ms.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations: {checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}}
+      labels: {{- include "multas-ms.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "multas-ms.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: multas-ms
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext: {{- toYaml .Values.securityContext | nindent 12 }}
+          envFrom:
+            - configMapRef: {name: {{ include "multas-ms.fullname" . }}}
+          env:
+            - name: DATABASE_URL
+              valueFrom: {secretKeyRef: {name: {{ .Values.database.secretName }}, key: {{ .Values.database.secretKey }}}}
+            - name: RABBITMQ_URL
+              valueFrom: {secretKeyRef: {name: {{ .Values.rabbitmq.secretName }}, key: {{ .Values.rabbitmq.secretKey }}}}
+          ports:
+            - {name: http, containerPort: {{ .Values.service.port }}}
+          startupProbe:
+            httpGet: {path: /health, port: http}
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+          resources: {{- toYaml .Values.resources | nindent 12 }}

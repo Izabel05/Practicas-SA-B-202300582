@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "loans-database.fullname" . }}
+  namespace: {{ include "loans-database.namespace" . }}
+  labels: {{- include "loans-database.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  selector: {{- include "loans-database.selectorLabels" . | nindent 4 }}
+  ports:
+    - {name: postgresql, port: {{ .Values.service.port }}, targetPort: postgresql}

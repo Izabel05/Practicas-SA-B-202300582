@@ -1,0 +1,7 @@
+apiVersion: v2
+name: auth-database
+description: PostgreSQL persistente y aislado para autenticacion-ms
+type: application
+version: 0.1.0
+appVersion: "17"
+

@@ -1,0 +1,16 @@
+CREATE TABLE IF NOT EXISTS ejecuciones_cronjob (
+  id BIGSERIAL PRIMARY KEY,
+  fecha_ejecucion TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+  carne VARCHAR(20) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_ejecuciones_fecha
+  ON ejecuciones_cronjob(fecha_ejecucion);
+
+CREATE TABLE IF NOT EXISTS resumenes_ejecuciones (
+  id BIGSERIAL PRIMARY KEY,
+  evento_id UUID NOT NULL UNIQUE,
+  generado_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+  resumen JSONB NOT NULL,
+  recibido_en TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
