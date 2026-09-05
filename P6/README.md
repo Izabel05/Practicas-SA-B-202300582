@@ -58,6 +58,13 @@ Los comandos son deliberadamente parametrizados: reemplace `MI_PROYECTO` y ajust
 
 El script habilita las API necesarias, crea un repositorio privado de Artifact Registry si falta, crea un clúster zonal de un nodo y configura `kubectl`. Revise la cuota y el costo mostrado por Google antes de mantener el clúster activo.
 
+### Creacion de cluster
+
+![alt text](<Captura de pantalla 2026-09-04 013546.png>)
+
+![alt text](<Captura de pantalla 2026-09-04 015455.png>)
+
+
 ## 3. Construir y publicar imágenes
 
 ```powershell
@@ -66,69 +73,224 @@ El script habilita las API necesarias, crea un repositorio privado de Artifact R
 
 El código fuente se toma de `P4/Backend`; no se duplica dentro de P6. El worker se toma de `P6/cronjobs/cronjob2`. El script construye explícitamente cada `Dockerfile.prod` multi-stage y publica la imagen en Artifact Registry; no configura acceso público.
 
-## 4. Crear Secrets y desplegar
+colocando la carpeta de la practica en google cloud
 
+![alt text](<Captura de pantalla 2026-09-04 020827.png>)
+
+### 3.1 Preparando Artifact
+
+**Creando reposiotrio**
+
+![alt text](<Captura de pantalla 2026-09-04 012659.png>)
+
+![alt text](<Captura de pantalla 2026-09-04 012739.png>)
+
+**Subiendo imaganes a repositorio**
+Comandos:
 ```powershell
-.\P6\scripts\03-create-secrets.ps1
-.\P6\scripts\04-deploy.ps1 -ProjectId MI_PROYECTO
+    gcloud builds submit . \
+  --config=cloudbuild.yaml \
+  --region=us-central1 \
+  --timeout=1800s \
+  --service-account="projects/p6202300582/serviceAccounts/sa-cloud-build-p6@p6202300582.iam.gserviceaccount.com"
 ```
 
-Compruebe el resultado:
+![alt text](<Captura de pantalla 2026-09-04 023359.png>)
+
+**Imaagenes subidas**
+
+![alt text](<Captura de pantalla 2026-09-04 023510.png>)
+
+## 4.Configurando proyecto para cluster
+
+**comando para para conectar cloud shell con cluster**
 
 ```powershell
-kubectl get nodes -o wide
+gcloud container clusters get-credentials sa-p6-cluster \
+  --zone=us-central1-a \
+  --project=p6202300582
+```
+
+![alt text](<Captura de pantalla 2026-09-04 023609.png>)
+
+### 4.1 configurajndo secrests
+
+comandos:
+
+```powershell
+
+cd ~/sa-p6-source/P6/charts/sa-platform
+
+# Evita que Helm intente apropiarse del namespace creado manualmente
+if [ -f templates/namespace.yaml ]; then
+  mv templates/namespace.yaml namespace.yaml.disabled
+fi
+
+kubectl create namespace sa-p6 \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+read -r -s -p "AUTH_DATABASE_URL: " AUTH_DATABASE_URL; echo
+read -r -s -p "CATALOG_DATABASE_URL: " CATALOG_DATABASE_URL; echo
+read -r -s -p "LOANS_DATABASE_URL: " LOANS_DATABASE_URL; echo
+read -r -s -p "FINES_DATABASE_URL: " FINES_DATABASE_URL; echo
+read -r -s -p "CRONJOBS_DATABASE_URL: " CRONJOBS_DATABASE_URL; echo
+
+JWT_SECRET="$(openssl rand -hex 32)"
+
+kubectl -n sa-p6 create secret generic auth-postgresql-credentials \
+  --from-literal=database-url="$AUTH_DATABASE_URL" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl -n sa-p6 create secret generic catalog-postgresql-credentials \
+  --from-literal=database-url="$CATALOG_DATABASE_URL" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl -n sa-p6 create secret generic loans-postgresql-credentials \
+  --from-literal=database-url="$LOANS_DATABASE_URL" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl -n sa-p6 create secret generic fines-postgresql-credentials \
+  --from-literal=database-url="$FINES_DATABASE_URL" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl -n sa-p6 create secret generic cronjobs-postgresql-credentials \
+  --from-literal=database-url="$CRONJOBS_DATABASE_URL" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl -n sa-p6 create secret generic jwt-credentials \
+  --from-literal=JWT_SECRET="$JWT_SECRET" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+unset AUTH_DATABASE_URL CATALOG_DATABASE_URL LOANS_DATABASE_URL
+unset FINES_DATABASE_URL CRONJOBS_DATABASE_URL JWT_SECRET
+
+kubectl -n sa-p6 get secrets
+```
+**Confirmacion de creadion**
+
+![alt text](<Captura de pantalla 2026-09-04 024714.png>)
+
+![alt text](<Captura de pantalla 2026-09-04 024826.png>)
+
+### 4.2 desplegando helm
+
+comando:
+
+```powershell
+
+cd ~/sa-p6-source/P6/charts/sa-platform
+
+REGISTRY="us-central1-docker.pkg.dev/p6202300582/sa-p6"
+DNS_IP="$(kubectl -n kube-system get service kube-dns -o jsonpath='{.spec.clusterIP}')"
+
+echo "DNS de GKE: $DNS_IP"
+
+helm dependency build
+
+helm upgrade --install sa-platform . \
+  --namespace sa-p6 \
+  --create-namespace \
+  -f values-gke.yaml \
+  --set-string "api-gateway.image.repository=$REGISTRY/api-gateway" \
+  --set-string "autenticacion-ms.image.repository=$REGISTRY/autenticacion-ms" \
+  --set-string "catalogo-ms.image.repository=$REGISTRY/catalogo-ms" \
+  --set-string "prestamos-ms.image.repository=$REGISTRY/prestamos-ms" \
+  --set-string "multas-ms.image.repository=$REGISTRY/multas-ms" \
+  --set-string "cronjob2.image.repository=$REGISTRY/cronjobs-worker" \
+  --set-string "summaryConsumer.image.repository=$REGISTRY/cronjobs-worker" \
+  --set-string "api-gateway.upstreams.resolver=$DNS_IP" \
+  --wait \
+  --timeout 10m
+
+```
+
+  ![alt text](<Captura de pantalla 2026-09-04 033625.png>)
+
+**verificando resultados**
+
+```powershell
+
 kubectl -n sa-p6 get pods
-kubectl -n sa-p6 get pvc
-kubectl -n sa-p6 get service api-gateway
+kubectl -n sa-p6 get services
+kubectl -n sa-p6 get cronjobs
+`
+![alt text](image.png)
+
 ```
 
-La IP externa puede tardar unos minutos. Cuando aparezca, pruebe `http://IP_EXTERNA/health` y luego los endpoints del archivo `P4/Postman/SA_P4_BibliotecaDigital.postman_collection.json`.
+### 4.3 Porbar query de neon db 
 
-## 5. Evidencias
+**Para cronjob1**
+```powershell
 
-Ejecute:
+QUERY1="query-cronjob1-$(date +%s)"
+
+kubectl -n sa-p6 create job "$QUERY1" \
+  --from=cronjob/cronjob1 \
+  --dry-run=client -o json \
+  | jq '.spec.template.spec.containers[0].command=["psql"]
+        | .spec.template.spec.containers[0].args=["$(DATABASE_URL)","-c","SELECT id, fecha_ejecucion, carne FROM ejecuciones_cronjob ORDER BY id DESC LIMIT 10;"]' \
+  | kubectl apply -f -
+
+kubectl -n sa-p6 wait \
+  --for=condition=complete "job/$QUERY1" \
+  --timeout=180s
+
+kubectl -n sa-p6 logs "job/$QUERY1"
+kubectl -n sa-p6 delete job "$QUERY1"
+
+```
+
+![alt text](image-2.png)
+
+**Para cronjob2**
 
 ```powershell
-.\P6\scripts\05-evidence.ps1
+QUERY2="query-cronjob2-$(date +%s)"
+
+kubectl -n sa-p6 create job "$QUERY2" \
+  --from=cronjob/cronjob1 \
+  --dry-run=client -o json \
+  | jq '.spec.template.spec.containers[0].command=["psql"]
+        | .spec.template.spec.containers[0].args=["$(DATABASE_URL)","-c","SELECT id, evento_id, generado_en, resumen, recibido_en FROM resumenes_ejecuciones ORDER BY id DESC LIMIT 10;"]' \
+  | kubectl apply -f -
+
+kubectl -n sa-p6 wait \
+  --for=condition=complete "job/$QUERY2" \
+  --timeout=180s
+
+kubectl -n sa-p6 logs "job/$QUERY2"
+kubectl -n sa-p6 delete job "$QUERY2"
 ```
+![alt text](image-1.png)
 
-Complete la lista de `evidencias/README.md` con capturas de consola, pods, registro, almacenamiento, IP pública y peticiones reales. No capture ni ejecute `kubectl get secret -o yaml`, porque expondría credenciales.
+## 5.Eliminacion de cluster
+**Comando de limpieza**
+```
+helm uninstall sa-platform -n sa-p6
 
-## Respuestas teóricas
+kubectl -n sa-p6 get svc,pvc
+```
+**Eliminando cluster**
 
-### 1. ¿Qué es un clúster administrado y en qué difiere de uno local?
+![alt text](<Captura de pantalla 2026-09-04 034608.png>)
 
+**Eliminando proyecto**
+.\P6\scripts\99-destroy.ps1 -ProjectId MI_PROYECTO -DeleteArtifactRepository
+
+## 6.Preguntas:
+
+1. ¿Qué es un clúster administrado y en qué difiere de uno local?
 En un clúster administrado, el proveedor opera el plano de control de Kubernetes, integra identidad, red, almacenamiento y actualizaciones, y ofrece disponibilidad y observabilidad propias de la nube. Un clúster local simula gran parte de esos recursos en una sola computadora y normalmente no proporciona balanceadores, discos ni direcciones públicas reales. En GKE todavía debemos dimensionar los nodos, desplegar y asegurar las cargas y vigilar el consumo.
 
-### 2. ¿Qué es un Service LoadBalancer y cómo lo implementa GCP?
+2. ¿Qué es un Service LoadBalancer y cómo lo implementa GCP?
+Es un Service que solicita al proveedor un balanceador externo y una dirección IP pública. GKE observa el objeto de Kubernetes, crea los recursos de red de Google Cloud y dirige el tráfico al puerto del Service y después a los pods seleccionados. Aquí el tráfico público llega al API Gateway por el puerto 8080; los microservicios permanecen como ClusterIP.
 
-Es un Service que solicita al proveedor un balanceador externo y una dirección IP pública. GKE observa el objeto de Kubernetes, crea los recursos de red de Google Cloud y dirige el tráfico al puerto del Service y después a los pods seleccionados. Aquí el tráfico público llega al API Gateway por el puerto 8080; los microservicios permanecen como `ClusterIP`.
-
-### 3. ¿Qué es un registro de contenedores y por qué se necesita?
-
+3. ¿Qué es un registro de contenedores y por qué se necesita?
 Es un repositorio remoto y versionado de imágenes OCI. Los nodos de GKE no pueden usar las imágenes que solo existen en la computadora de desarrollo; deben descargarlas desde un registro accesible. Artifact Registry centraliza las etiquetas, permisos y análisis de las imágenes usadas por el despliegue.
 
-### 4. ¿Qué administra el proveedor y qué administra el estudiante?
-
+4. ¿Qué administra el proveedor y qué administra el estudiante?
 GKE administra el plano de control, su disponibilidad y la integración con balanceadores y discos. El estudiante administra los nodos y su tamaño, imágenes, Deployments, Services, Secrets, políticas de red, bases externas, actualizaciones de la aplicación, copias de seguridad, observabilidad y costos. El modo administrado reduce trabajo operativo, pero no transfiere la seguridad ni la confiabilidad de la aplicación al proveedor.
 
-### 5. ¿Qué costos se generan y cómo se reducen?
-
+5. ¿Qué costos se generan y cómo se reducen?
 El costo real combina cómputo de un nodo, discos persistentes, balanceador/IP pública, almacenamiento y transferencia de Artifact Registry, tráfico saliente y el plan elegido en Neon. Registre en la entrega el valor observado en Billing durante el intervalo de la práctica; no use una cifra fija porque tarifas, créditos, región y horas activas varían. Para reducirlo: use el clúster zonal de un nodo indicado, imágenes compactas, límites de recursos, la capa gratuita de Neon y elimine el clúster y el registro al terminar.
-
-## Limpieza obligatoria
-
-```powershell
-.\P6\scripts\99-destroy.ps1 -ProjectId MI_PROYECTO -DeleteArtifactRepository
-```
-
-Verifique además en la consola que no queden discos, direcciones IP, balanceadores ni recursos facturables. Neon se elimina desde su propia consola si ya no se utilizará. Tome una captura de la eliminación para la evidencia final.
-
-## Datos que debe completar antes de entregar
-
-- Proyecto, región y zona usados.
-- Dirección IP pública o dominio.
-- Fecha y duración del despliegue.
-- Costo aproximado observado en Billing y costo de Neon.
-- Capturas solicitadas en `evidencias/README.md`.
-- Confirmación y evidencia de la limpieza final.
