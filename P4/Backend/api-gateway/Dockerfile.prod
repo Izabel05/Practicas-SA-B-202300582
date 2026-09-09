@@ -1,7 +1,11 @@
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS validation
 
 COPY nginx.conf /etc/nginx/nginx.conf
-RUN nginx -t
+# El DNS de Kubernetes no existe durante el build. Validar una copia con un
+# resolver local conserva la comprobacion sintactica sin alterar la config final.
+RUN sed 's/resolver kube-dns\.kube-system\.svc\.cluster\.local/resolver 127.0.0.1/' \
+      /etc/nginx/nginx.conf > /tmp/nginx.test.conf \
+    && nginx -t -c /tmp/nginx.test.conf
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS production
 
