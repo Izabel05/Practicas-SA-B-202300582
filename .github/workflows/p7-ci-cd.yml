@@ -1,0 +1,267 @@
+name: P7 CI-CD
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Desplegar en el cluster de GKE despues de publicar las imagenes"
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: p7-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  GCP_PROJECT_ID: p6202300582
+  GKE_CLUSTER: sa-p6-cluster
+  GKE_LOCATION: us-central1-a
+  K8S_NAMESPACE: sa-p6
+  HELM_RELEASE: sa-platform
+
+jobs:
+  test-go:
+    name: Pruebas Go - ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - autenticacion-ms
+          - catalogo-ms
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v7
+
+      - name: Configurar Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: P4/Backend/${{ matrix.service }}/go.mod
+          cache-dependency-path: P4/Backend/${{ matrix.service }}/go.sum
+
+      - name: Ejecutar pruebas
+        working-directory: P4/Backend/${{ matrix.service }}
+        run: go test ./...
+
+  test-python:
+    name: Pruebas Python - ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: prestamos-ms
+            python-version: "3.13"
+          - service: multas-ms
+            python-version: "3.12"
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v7
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: P4/Backend/${{ matrix.service }}/requirements.txt
+
+      - name: Instalar dependencias
+        working-directory: P4/Backend/${{ matrix.service }}
+        run: python -m pip install -r requirements.txt
+
+      - name: Ejecutar pruebas
+        working-directory: P4/Backend/${{ matrix.service }}
+        run: python -m unittest discover -s tests -v
+
+  validate-worker:
+    name: Validar worker de CronJobs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v7
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: P6/cronjobs/cronjob2/requirements.txt
+
+      - name: Instalar dependencias
+        working-directory: P6/cronjobs/cronjob2
+        run: python -m pip install -r requirements.txt
+
+      - name: Compilar el worker
+        working-directory: P6/cronjobs/cronjob2
+        run: python -m py_compile worker.py
+
+  build-publish:
+    name: Imagen - ${{ matrix.image }}
+    needs:
+      - test-go
+      - test-python
+      - validate-worker
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: api-gateway
+            context: P4/Backend/api-gateway
+          - image: autenticacion-ms
+            context: P4/Backend/autenticacion-ms
+          - image: catalogo-ms
+            context: P4/Backend/catalogo-ms
+          - image: prestamos-ms
+            context: P4/Backend/prestamos-ms
+          - image: multas-ms
+            context: P4/Backend/multas-ms
+          - image: cronjobs-worker
+            context: P6/cronjobs/cronjob2
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v7
+
+      - name: Normalizar nombre de la imagen
+        id: image
+        shell: bash
+        run: echo "name=${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/sa-${{ matrix.image }}" >> "$GITHUB_OUTPUT"
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Iniciar sesion en GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Preparar etiquetas y metadatos
+        id: metadata
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: |
+            type=raw,value=${{ github.sha }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=ref,event=tag
+
+      - name: Construir y publicar imagen
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.context }}/Dockerfile.prod
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  deploy-gke:
+    name: Desplegar en GKE
+    needs:
+      - build-publish
+    if: >-
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.deploy == true)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      packages: read
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v7
+
+      - name: Autenticar con Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Configurar Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Obtener credenciales de GKE
+        uses: google-github-actions/get-gke-credentials@v3
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_LOCATION }}
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Verificar secretos requeridos
+        shell: bash
+        run: |
+          required_secrets=(
+            auth-postgresql-credentials
+            catalog-postgresql-credentials
+            loans-postgresql-credentials
+            fines-postgresql-credentials
+            cronjobs-postgresql-credentials
+            jwt-credentials
+          )
+
+          for secret_name in "${required_secrets[@]}"; do
+            kubectl --namespace "$K8S_NAMESPACE" get secret "$secret_name" >/dev/null
+          done
+
+      - name: Desplegar chart con Helm
+        shell: bash
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          registry="$REGISTRY/$owner"
+          dns_ip="$(kubectl --namespace kube-system get service kube-dns -o jsonpath='{.spec.clusterIP}')"
+
+          helm dependency build P6/charts/sa-platform
+          helm upgrade --install "$HELM_RELEASE" P6/charts/sa-platform \
+            --namespace "$K8S_NAMESPACE" \
+            --create-namespace \
+            --values P6/charts/sa-platform/values-gke.yaml \
+            --set-string "api-gateway.image.repository=$registry/sa-api-gateway" \
+            --set-string "api-gateway.image.tag=$GITHUB_SHA" \
+            --set-string "api-gateway.upstreams.resolver=$dns_ip" \
+            --set-string "autenticacion-ms.image.repository=$registry/sa-autenticacion-ms" \
+            --set-string "autenticacion-ms.image.tag=$GITHUB_SHA" \
+            --set-string "catalogo-ms.image.repository=$registry/sa-catalogo-ms" \
+            --set-string "catalogo-ms.image.tag=$GITHUB_SHA" \
+            --set-string "prestamos-ms.image.repository=$registry/sa-prestamos-ms" \
+            --set-string "prestamos-ms.image.tag=$GITHUB_SHA" \
+            --set-string "multas-ms.image.repository=$registry/sa-multas-ms" \
+            --set-string "multas-ms.image.tag=$GITHUB_SHA" \
+            --set-string "cronjob2.image.repository=$registry/sa-cronjobs-worker" \
+            --set-string "cronjob2.image.tag=$GITHUB_SHA" \
+            --set-string "summaryConsumer.image.repository=$registry/sa-cronjobs-worker" \
+            --set-string "summaryConsumer.image.tag=$GITHUB_SHA" \
+            --wait \
+            --timeout 10m
+
+      - name: Verificar despliegue
+        shell: bash
+        run: |
+          deployments=(
+            api-gateway
+            autenticacion-ms
+            catalogo-ms
+            prestamos-ms
+            multas-ms
+            summary-consumer
+          )
+
+          kubectl --namespace "$K8S_NAMESPACE" get pods,services,cronjobs
+          for deployment_name in "${deployments[@]}"; do
+            kubectl --namespace "$K8S_NAMESPACE" rollout status "deployment/$deployment_name" --timeout=5m
+          done
