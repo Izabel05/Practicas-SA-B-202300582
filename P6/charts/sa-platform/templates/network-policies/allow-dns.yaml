@@ -11,14 +11,11 @@ spec:
   policyTypes:
     - Egress
   egress:
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: kube-system
-          podSelector:
-            matchLabels:
-              k8s-app: kube-dns
-      ports:
+    # GKE puede aplicar la NetworkPolicy antes de traducir la IP virtual del
+    # servicio kube-dns. Limitar por selector de Pod bloquea en ese caso la IP
+    # ClusterIP del DNS. Se permite solamente el puerto DNS, sin restringir el
+    # destino, para que funcione con kube-dns y con el DNS administrado de GKE.
+    - ports:
         - {protocol: UDP, port: 53}
         - {protocol: TCP, port: 53}
 {{- end }}
