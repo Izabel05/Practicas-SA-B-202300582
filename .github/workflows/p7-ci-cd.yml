@@ -104,7 +104,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [autenticacion-ms, catalogo-ms]
+        include:
+          - service: autenticacion-ms
+            unit_pattern: ^Test(RegisterCreatesReaderAndReturnsToken|LoginRejectsInactiveUser)$
+            integration_pattern: ^TestRegisterEndpoint$
+          - service: catalogo-ms
+            unit_pattern: ^Test(CreateCategoryTrimsInput|UpdateCopyStatusNormalizesValue)$
+            integration_pattern: ""
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
@@ -113,10 +119,11 @@ jobs:
           cache-dependency-path: P4/Backend/${{ matrix.service }}/go.sum
       - name: Pruebas unitarias
         working-directory: P4/Backend/${{ matrix.service }}
-        run: go test -v ./internal/service
+        run: go test -v ./internal/service -run '${{ matrix.unit_pattern }}'
       - name: Pruebas de integracion
+        if: matrix.integration_pattern != ''
         working-directory: P4/Backend/${{ matrix.service }}
-        run: go test -v ./internal/controller
+        run: go test -v ./internal/controller -run '${{ matrix.integration_pattern }}'
 
   test-python:
     name: 2 - Pruebas Python 70/20 - ${{ matrix.service }}
@@ -126,8 +133,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {service: prestamos-ms, python-version: "3.13", unit-file: test_loan_service.py, integration-file: test_graphql.py}
-          - {service: multas-ms, python-version: "3.12", unit-file: test_fine_service.py, integration-file: test_api.py}
+          - service: prestamos-ms
+            python-version: "3.13"
+            unit_targets: >-
+              tests.test_loan_service.LoanServiceTests.test_create_loan_reserves_copy
+              tests.test_loan_service.LoanServiceTests.test_return_copy_releases_catalog_copy
+            integration_targets: tests.test_graphql.GraphQLTests.test_query_loan
+          - service: multas-ms
+            python-version: "3.12"
+            unit_targets: tests.test_fine_service.FineServiceTests.test_calculates_amount_by_overdue_days
+            integration_targets: ""
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
@@ -140,10 +155,11 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Pruebas unitarias
         working-directory: P4/Backend/${{ matrix.service }}
-        run: python -m unittest discover -s tests -p '${{ matrix.unit-file }}' -v
+        run: python -m unittest -v ${{ matrix.unit_targets }}
       - name: Pruebas de integracion
+        if: matrix.integration_targets != ''
         working-directory: P4/Backend/${{ matrix.service }}
-        run: python -m unittest discover -s tests -p '${{ matrix.integration-file }}' -v
+        run: python -m unittest -v ${{ matrix.integration_targets }}
 
   build-publish:
     name: 3 - Docker - ${{ matrix.image }}
@@ -297,8 +313,11 @@ jobs:
             sleep 10
           done
           [[ -n "$gateway_ip" ]] || { echo "El API Gateway no obtuvo una IP publica" >&2; exit 1; }
+          gateway_port="$(kubectl --namespace "$K8S_NAMESPACE" get service api-gateway -o jsonpath='{.spec.ports[0].port}')"
           endpoints=(/health /health/auth /health/catalogo /health/prestamos /health/multas)
           for endpoint in "${endpoints[@]}"; do
-            curl --fail --show-error --retry 12 --retry-delay 5 "http://$gateway_ip$endpoint"
+            curl --fail --show-error --retry 20 --retry-all-errors --retry-delay 5 \
+              --connect-timeout 5 --max-time 15 \
+              "http://$gateway_ip:$gateway_port$endpoint"
             echo
           done

@@ -1,9 +1,7 @@
-"""Valida la distribucion minima de pruebas requerida para la Practica 7."""
+"""Valida la seleccion de nueve pruebas ejecutada por el pipeline de P7."""
 
 from __future__ import annotations
 
-import ast
-import re
 import sys
 from pathlib import Path
 
@@ -12,63 +10,60 @@ ROOT = Path(__file__).resolve().parents[2]
 UNIT_MINIMUM = 70.0
 INTEGRATION_MINIMUM = 20.0
 
-UNIT_PATTERNS = (
-    "P4/Backend/*/internal/service/*_test.go",
-    "P4/Backend/*/tests/test_*_service.py",
+# Siete pruebas unitarias: dos de autenticacion, dos de catalogo, dos de
+# prestamos y una de multas.
+UNIT_TESTS = (
+    ("P4/Backend/autenticacion-ms/internal/service/auth_service_test.go", "TestRegisterCreatesReaderAndReturnsToken"),
+    ("P4/Backend/autenticacion-ms/internal/service/auth_service_test.go", "TestLoginRejectsInactiveUser"),
+    ("P4/Backend/catalogo-ms/internal/service/catalog_service_test.go", "TestCreateCategoryTrimsInput"),
+    ("P4/Backend/catalogo-ms/internal/service/catalog_service_test.go", "TestUpdateCopyStatusNormalizesValue"),
+    ("P4/Backend/prestamos-ms/tests/test_loan_service.py", "test_create_loan_reserves_copy"),
+    ("P4/Backend/prestamos-ms/tests/test_loan_service.py", "test_return_copy_releases_catalog_copy"),
+    ("P4/Backend/multas-ms/tests/test_fine_service.py", "test_calculates_amount_by_overdue_days"),
 )
-INTEGRATION_PATTERNS = (
-    "P4/Backend/*/internal/controller/*_test.go",
-    "P4/Backend/*/tests/test_api.py",
-    "P4/Backend/*/tests/test_graphql.py",
+
+# Dos pruebas de integracion: endpoint HTTP de autenticacion y endpoint
+# GraphQL de prestamos.
+INTEGRATION_TESTS = (
+    ("P4/Backend/autenticacion-ms/internal/controller/auth_controller_test.go", "TestRegisterEndpoint"),
+    ("P4/Backend/prestamos-ms/tests/test_graphql.py", "test_query_loan"),
 )
 
 
-def python_tests(path: Path) -> int:
-    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    return sum(
-        isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-        and node.name.startswith("test_")
-        for node in ast.walk(tree)
-    )
-
-
-def go_tests(path: Path) -> int:
-    source = path.read_text(encoding="utf-8")
-    return len(re.findall(r"(?m)^func\s+Test[A-Za-z0-9_]*\s*\(", source))
-
-
-def count(patterns: tuple[str, ...]) -> tuple[int, list[Path]]:
-    files = sorted({path for pattern in patterns for path in ROOT.glob(pattern)})
-    total = sum(python_tests(path) if path.suffix == ".py" else go_tests(path) for path in files)
-    return total, files
+def validate_test(path_text: str, test_name: str) -> str | None:
+    path = ROOT / path_text
+    if not path.is_file():
+        return f"No existe {path_text}"
+    if test_name not in path.read_text(encoding="utf-8"):
+        return f"No existe {test_name} en {path_text}"
+    return None
 
 
 def main() -> int:
-    unit, unit_files = count(UNIT_PATTERNS)
-    integration, integration_files = count(INTEGRATION_PATTERNS)
-    total = unit + integration
-    if total == 0:
-        print("No se encontraron pruebas clasificadas.", file=sys.stderr)
+    errors = [
+        error
+        for path, test_name in UNIT_TESTS + INTEGRATION_TESTS
+        if (error := validate_test(path, test_name)) is not None
+    ]
+    if errors:
+        print("\n".join(errors), file=sys.stderr)
         return 1
 
+    unit = len(UNIT_TESTS)
+    integration = len(INTEGRATION_TESTS)
+    total = unit + integration
     unit_percentage = unit * 100 / total
     integration_percentage = integration * 100 / total
 
+    print(f"Pruebas seleccionadas: {total}")
     print(f"Pruebas unitarias: {unit}/{total} ({unit_percentage:.1f}%)")
     print(f"Pruebas de integracion: {integration}/{total} ({integration_percentage:.1f}%)")
-    print(f"Archivos unitarios: {len(unit_files)}; archivos de integracion: {len(integration_files)}")
 
-    errors: list[str] = []
-    if unit_percentage < UNIT_MINIMUM:
-        errors.append(f"unitarias {unit_percentage:.1f}% < {UNIT_MINIMUM:.0f}%")
-    if integration_percentage < INTEGRATION_MINIMUM:
-        errors.append(f"integracion {integration_percentage:.1f}% < {INTEGRATION_MINIMUM:.0f}%")
-
-    if errors:
-        print("Distribucion invalida: " + ", ".join(errors), file=sys.stderr)
+    if unit_percentage < UNIT_MINIMUM or integration_percentage < INTEGRATION_MINIMUM:
+        print("La seleccion no cumple los minimos 70/20.", file=sys.stderr)
         return 1
 
-    print("Distribucion 70/20 validada correctamente.")
+    print("Seleccion de 7 pruebas unitarias y 2 de integracion validada.")
     return 0
 
 

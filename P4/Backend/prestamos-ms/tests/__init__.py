@@ -1,1 +1,1 @@
-"""Pruebas del microservicio."""
+"""Pruebas del microservicio de prestamos."""
