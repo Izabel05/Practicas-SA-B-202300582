@@ -4,14 +4,12 @@ Esta carpeta documenta el pipeline CI/CD de la plataforma de microservicios desa
 
 ## Flujo implementado
 
-1. Descarga el codigo del repositorio.
-2. Ejecuta las pruebas de `autenticacion-ms` y `catalogo-ms` con Go.
-3. Ejecuta las pruebas de `prestamos-ms` y `multas-ms` con Python.
-4. Valida la compilacion del worker de CronJobs.
-5. Construye las seis imagenes mediante sus `Dockerfile.prod`.
-6. Publica las imagenes en GitHub Container Registry (GHCR).
-7. Cuando se crea un tag `v*`, se autentica con Google Cloud mediante Workload Identity Federation y despliega el chart de Helm en GKE.
-8. Comprueba el estado de los pods, servicios, CronJobs y Deployments.
+1. Prepara una version basada en el tag o en el SHA del commit y valida la distribucion minima de 70 % de pruebas unitarias y 20 % de integracion.
+2. Compila en paralelo los servicios Go y los servicios/worker Python.
+3. Ejecuta en paralelo las pruebas unitarias y de integracion de Go y Python.
+4. Construye y publica las seis imagenes mediante una matriz Docker.
+5. Cuando se crea un tag `v*`, se autentica con Google Cloud mediante Workload Identity Federation y despliega el chart de Helm en GKE.
+6. Comprueba los rollouts y ejecuta smoke tests contra los cinco endpoints de salud del API Gateway.
 
 El diagrama detallado se encuentra en [DIAGRAMA_PIPELINE.md](DIAGRAMA_PIPELINE.md).
 
@@ -109,7 +107,8 @@ P7/
 |   `-- README.md
 `-- scripts/
     |-- 01-configure-workload-identity.sh
-    `-- 02-bootstrap-cluster.sh
+    |-- 02-bootstrap-cluster.sh
+    `-- validate-test-distribution.py
 
 .github/
 `-- workflows/

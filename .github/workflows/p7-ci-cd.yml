@@ -3,10 +3,8 @@ name: P7 CI-CD
 on:
   pull_request:
   push:
-    branches:
-      - main
-    tags:
-      - "v*"
+    branches: [main]
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       deploy:
@@ -28,87 +26,128 @@ env:
   HELM_RELEASE: sa-platform
 
 jobs:
-  test-go:
-    name: Pruebas Go - ${{ matrix.service }}
+  prepare:
+    name: 0 - Preparacion y version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v7
+      - name: Determinar version
+        id: version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            version="${GITHUB_REF#refs/tags/}"
+          else
+            version="sha-${GITHUB_SHA::7}"
+          fi
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+          echo "Version del pipeline: $version"
+      - name: Validar distribucion 70/20 de pruebas
+        run: python P7/scripts/validate-test-distribution.py
+
+  build-go:
+    name: 1 - Build Go - ${{ matrix.service }}
+    needs: prepare
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        service:
-          - autenticacion-ms
-          - catalogo-ms
+        service: [autenticacion-ms, catalogo-ms]
     steps:
-      - name: Descargar repositorio
-        uses: actions/checkout@v7
-
-      - name: Configurar Go
-        uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version-file: P4/Backend/${{ matrix.service }}/go.mod
           cache-dependency-path: P4/Backend/${{ matrix.service }}/go.sum
-
-      - name: Ejecutar pruebas
+      - name: Compilar servicio
         working-directory: P4/Backend/${{ matrix.service }}
-        run: go test ./...
+        run: go build ./...
 
-  test-python:
-    name: Pruebas Python - ${{ matrix.service }}
+  build-python:
+    name: 1 - Build Python - ${{ matrix.service }}
+    needs: prepare
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - service: prestamos-ms
-            python-version: "3.13"
-          - service: multas-ms
-            python-version: "3.12"
+          - {service: prestamos-ms, path: P4/Backend/prestamos-ms, python-version: "3.13"}
+          - {service: multas-ms, path: P4/Backend/multas-ms, python-version: "3.12"}
+          - {service: cronjobs-worker, path: P6/cronjobs/cronjob2, python-version: "3.13"}
     steps:
-      - name: Descargar repositorio
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: ${{ matrix.path }}/requirements.txt
+      - name: Instalar dependencias
+        working-directory: ${{ matrix.path }}
+        run: python -m pip install -r requirements.txt
+      - name: Compilar servicio o worker
+        working-directory: ${{ matrix.path }}
+        shell: bash
+        run: |
+          if [[ -d app ]]; then
+            python -m compileall -q app
+          else
+            python -m py_compile worker.py
+          fi
 
-      - name: Configurar Python
-        uses: actions/setup-python@v6
+  test-go:
+    name: 2 - Pruebas Go 70/20 - ${{ matrix.service }}
+    needs: build-go
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [autenticacion-ms, catalogo-ms]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: P4/Backend/${{ matrix.service }}/go.mod
+          cache-dependency-path: P4/Backend/${{ matrix.service }}/go.sum
+      - name: Pruebas unitarias
+        working-directory: P4/Backend/${{ matrix.service }}
+        run: go test -v ./internal/service
+      - name: Pruebas de integracion
+        working-directory: P4/Backend/${{ matrix.service }}
+        run: go test -v ./internal/controller
+
+  test-python:
+    name: 2 - Pruebas Python 70/20 - ${{ matrix.service }}
+    needs: build-python
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {service: prestamos-ms, python-version: "3.13", unit-file: test_loan_service.py, integration-file: test_graphql.py}
+          - {service: multas-ms, python-version: "3.12", unit-file: test_fine_service.py, integration-file: test_api.py}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: P4/Backend/${{ matrix.service }}/requirements.txt
-
       - name: Instalar dependencias
         working-directory: P4/Backend/${{ matrix.service }}
         run: python -m pip install -r requirements.txt
-
-      - name: Ejecutar pruebas
+      - name: Pruebas unitarias
         working-directory: P4/Backend/${{ matrix.service }}
-        run: python -m unittest discover -s tests -v
-
-  validate-worker:
-    name: Validar worker de CronJobs
-    runs-on: ubuntu-latest
-    steps:
-      - name: Descargar repositorio
-        uses: actions/checkout@v7
-
-      - name: Configurar Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.13"
-          cache: pip
-          cache-dependency-path: P6/cronjobs/cronjob2/requirements.txt
-
-      - name: Instalar dependencias
-        working-directory: P6/cronjobs/cronjob2
-        run: python -m pip install -r requirements.txt
-
-      - name: Compilar el worker
-        working-directory: P6/cronjobs/cronjob2
-        run: python -m py_compile worker.py
+        run: python -m unittest discover -s tests -p '${{ matrix.unit-file }}' -v
+      - name: Pruebas de integracion
+        working-directory: P4/Backend/${{ matrix.service }}
+        run: python -m unittest discover -s tests -p '${{ matrix.integration-file }}' -v
 
   build-publish:
-    name: Imagen - ${{ matrix.image }}
-    needs:
-      - test-go
-      - test-python
-      - validate-worker
+    name: 3 - Docker - ${{ matrix.image }}
+    needs: [test-go, test-python]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -117,30 +156,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - image: api-gateway
-            context: P4/Backend/api-gateway
-          - image: autenticacion-ms
-            context: P4/Backend/autenticacion-ms
-          - image: catalogo-ms
-            context: P4/Backend/catalogo-ms
-          - image: prestamos-ms
-            context: P4/Backend/prestamos-ms
-          - image: multas-ms
-            context: P4/Backend/multas-ms
-          - image: cronjobs-worker
-            context: P6/cronjobs/cronjob2
+          - {image: api-gateway, context: P4/Backend/api-gateway}
+          - {image: autenticacion-ms, context: P4/Backend/autenticacion-ms}
+          - {image: catalogo-ms, context: P4/Backend/catalogo-ms}
+          - {image: prestamos-ms, context: P4/Backend/prestamos-ms}
+          - {image: multas-ms, context: P4/Backend/multas-ms}
+          - {image: cronjobs-worker, context: P6/cronjobs/cronjob2}
     steps:
-      - name: Descargar repositorio
-        uses: actions/checkout@v7
-
+      - uses: actions/checkout@v7
       - name: Normalizar nombre de la imagen
         id: image
         shell: bash
         run: echo "name=${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/sa-${{ matrix.image }}" >> "$GITHUB_OUTPUT"
-
-      - name: Configurar Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
+      - uses: docker/setup-buildx-action@v3
       - name: Iniciar sesion en GHCR
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
@@ -148,7 +176,6 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Preparar etiquetas y metadatos
         id: metadata
         uses: docker/metadata-action@v5
@@ -158,7 +185,6 @@ jobs:
             type=raw,value=${{ github.sha }}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=ref,event=tag
-
       - name: Construir y publicar imagen
         uses: docker/build-push-action@v6
         with:
@@ -171,9 +197,8 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
   deploy-gke:
-    name: Desplegar en GKE
-    needs:
-      - build-publish
+    name: 4 - Despliegue GKE con Helm
+    needs: [prepare, build-publish]
     if: >-
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
       (github.event_name == 'workflow_dispatch' && inputs.deploy == true)
@@ -183,53 +208,38 @@ jobs:
       id-token: write
       packages: read
     steps:
-      - name: Descargar repositorio
-        uses: actions/checkout@v7
-
+      - uses: actions/checkout@v7
+      - name: Mostrar version a desplegar
+        run: echo "Desplegando ${{ needs.prepare.outputs.version }}"
       - name: Autenticar con Google Cloud
         uses: google-github-actions/auth@v3
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-
-      - name: Configurar Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v3
-
+      - uses: google-github-actions/setup-gcloud@v3
       - name: Obtener credenciales de GKE
         uses: google-github-actions/get-gke-credentials@v3
         with:
           cluster_name: ${{ env.GKE_CLUSTER }}
           location: ${{ env.GKE_LOCATION }}
           project_id: ${{ env.GCP_PROJECT_ID }}
-
       - name: Verificar secretos requeridos
         shell: bash
         run: |
-          required_secrets=(
-            auth-postgresql-credentials
-            catalog-postgresql-credentials
-            loans-postgresql-credentials
-            fines-postgresql-credentials
-            cronjobs-postgresql-credentials
-            jwt-credentials
-          )
-
+          required_secrets=(auth-postgresql-credentials catalog-postgresql-credentials loans-postgresql-credentials fines-postgresql-credentials cronjobs-postgresql-credentials jwt-credentials)
           for secret_name in "${required_secrets[@]}"; do
             kubectl --namespace "$K8S_NAMESPACE" get secret "$secret_name" >/dev/null
           done
-
       - name: Desplegar chart con Helm
         shell: bash
         run: |
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           registry="$REGISTRY/$owner"
           dns_ip="$(kubectl --namespace kube-system get service kube-dns -o jsonpath='{.spec.clusterIP}')"
-
           helm dependency build P6/charts/sa-platform
           helm upgrade --install "$HELM_RELEASE" P6/charts/sa-platform \
-            --namespace "$K8S_NAMESPACE" \
-            --create-namespace \
+            --namespace "$K8S_NAMESPACE" --create-namespace \
             --values P6/charts/sa-platform/values-gke.yaml \
             --set-string "api-gateway.image.repository=$registry/sa-api-gateway" \
             --set-string "api-gateway.image.tag=$GITHUB_SHA" \
@@ -246,22 +256,49 @@ jobs:
             --set-string "cronjob2.image.tag=$GITHUB_SHA" \
             --set-string "summaryConsumer.image.repository=$registry/sa-cronjobs-worker" \
             --set-string "summaryConsumer.image.tag=$GITHUB_SHA" \
-            --wait \
-            --timeout 10m
-
-      - name: Verificar despliegue
+            --wait --timeout 10m
+      - name: Verificar rollouts
         shell: bash
         run: |
-          deployments=(
-            api-gateway
-            autenticacion-ms
-            catalogo-ms
-            prestamos-ms
-            multas-ms
-            summary-consumer
-          )
-
+          deployments=(api-gateway autenticacion-ms catalogo-ms prestamos-ms multas-ms summary-consumer)
           kubectl --namespace "$K8S_NAMESPACE" get pods,services,cronjobs
           for deployment_name in "${deployments[@]}"; do
             kubectl --namespace "$K8S_NAMESPACE" rollout status "deployment/$deployment_name" --timeout=5m
+          done
+
+  smoke-gke:
+    name: 5 - Smoke tests GKE
+    needs: deploy-gke
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Autenticar con Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - name: Obtener credenciales de GKE
+        uses: google-github-actions/get-gke-credentials@v3
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_LOCATION }}
+          project_id: ${{ env.GCP_PROJECT_ID }}
+      - name: Esperar IP publica y comprobar servicios
+        shell: bash
+        run: |
+          gateway_ip=""
+          for attempt in {1..30}; do
+            gateway_ip="$(kubectl --namespace "$K8S_NAMESPACE" get service api-gateway -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+            [[ -n "$gateway_ip" ]] && break
+            echo "Esperando IP publica del API Gateway ($attempt/30)"
+            sleep 10
+          done
+          [[ -n "$gateway_ip" ]] || { echo "El API Gateway no obtuvo una IP publica" >&2; exit 1; }
+          endpoints=(/health /health/auth /health/catalogo /health/prestamos /health/multas)
+          for endpoint in "${endpoints[@]}"; do
+            curl --fail --show-error --retry 12 --retry-delay 5 "http://$gateway_ip$endpoint"
+            echo
           done
