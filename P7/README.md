@@ -63,7 +63,7 @@ chmod +x P7/scripts/02-bootstrap-cluster.sh
 P7/scripts/02-bootstrap-cluster.sh
 ```
 
-El script solicita las cinco URL de Neon sin mostrarlas, genera un JWT aleatorio y crea el namespace con los metadatos que necesita Helm. Los valores sensibles solamente existen durante la ejecucion y se guardan directamente como Secrets de Kubernetes.
+El script solicita las cinco URL de Neon y el JWT secret sin mostrarlos, y crea el namespace con los metadatos que necesita Helm. Los valores sensibles solamente existen durante la ejecucion y se guardan directamente como Secrets de Kubernetes.
 
 El pipeline comprueba que los siguientes Secrets existan antes del deploy:
 

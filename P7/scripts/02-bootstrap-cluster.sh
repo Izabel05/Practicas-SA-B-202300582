@@ -37,7 +37,11 @@ create_database_secret loans-postgresql-credentials "URL de prestamos_db"
 create_database_secret fines-postgresql-credentials "URL de multas_db"
 create_database_secret cronjobs-postgresql-credentials "URL de cronjobs_db"
 
-JWT_SECRET="$(openssl rand -hex 32)"
+JWT_SECRET=""
+while [[ -z "$JWT_SECRET" ]]; do
+  read -r -s -p "JWT secret: " JWT_SECRET
+  printf '\n'
+done
 kubectl --namespace "$NAMESPACE" create secret generic jwt-credentials \
   --from-literal="JWT_SECRET=$JWT_SECRET" \
   --dry-run=client -o yaml | kubectl apply -f -
