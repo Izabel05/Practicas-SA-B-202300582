@@ -1,9 +1,9 @@
 # Practica 8 - GitOps, entrega progresiva y seguridad
 
 Esta carpeta contiene la implementación de P8 sobre los microservicios de P5,
-P6 y P7. El repositorio de código es la fuente de los workflows y charts; el
-repositorio GitOps independiente contiene los valores/manifiestos que ArgoCD
-sincroniza con Kubernetes.
+P6 y P7. El repositorio de código contiene los workflows y el chart de
+referencia; el repositorio GitOps independiente contiene el chart declarativo
+que ArgoCD sincroniza con Kubernetes.
 
 ## Repositorios
 
@@ -11,7 +11,7 @@ sincroniza con Kubernetes.
 |---|---|
 | Código y workflows | https://github.com/Izabel05/Practicas-SA-B-202300582 |
 | Repositorio GitOps | https://github.com/Izabel05/GItOps_202300582 |
-| Aplicación ArgoCD | `sa-platform-p8` / namespace `sa-p8` (pendiente de registrar) |
+| Aplicación ArgoCD | `sa-platform-p8` / namespace `sa-p8` |
 
 ## Tabla de enlaces obligatoria
 
@@ -19,7 +19,7 @@ sincroniza con Kubernetes.
 |---|---|
 | Repositorio GitOps | https://github.com/Izabel05/GItOps_202300582 |
 | Aplicación en ArgoCD | `sa-platform-p8`, namespace `sa-p8` |
-| Ejecución exitosa del pipeline | Pendiente de ejecutar tag P8 |
+| Ejecución exitosa del pipeline | Pendiente de ejecutar tag P8 sin vulnerabilidades críticas |
 | Reversión automática | Pendiente de ejecutar fallo inducido |
 | Despliegue rechazado por política | Pendiente de evidencia Kyverno |
 | Bloqueo por vulnerabilidad crítica | Pendiente de ejecutar Trivy con CVE crítica |
@@ -45,15 +45,26 @@ tag vX.Y.Z
 
 ## Componentes
 
-- `charts/sa-platform`: chart Helm basado en P6, únicamente para la aplicación:
+- `charts/sa-platform`: chart Helm declarativo únicamente para la aplicación:
   Rollout/Deployments, Services, ConfigMaps, HPA, ExternalSecrets y políticas
   de ejecución. El canary y la versión estable conviven en `sa-p8`.
 - `terraform`: reconstrucción del perfil Minikube de prueba y recursos de
   infraestructura Kubernetes: namespace, ResourceQuota, LimitRange, cuentas,
-  Roles y RoleBindings.
+  Roles y RoleBindings. También contiene el modo GKE opcional, con red VPC,
+  subredes secundarias, clúster Standard y node pool.
 - `policies/kyverno-policies.yaml`: las tres políticas obligatorias de P8.
-- `.github/workflows/p8-gitops.yml`: pipeline sin kubeconfig ni despliegue
-  directo; únicamente genera un PR de promoción al repositorio GitOps.
+- `.github/workflows/p8-gitops.yml`: pipeline sin credenciales de clúster ni
+  despliegue directo; únicamente genera un PR de promoción al repositorio
+  GitOps cuando se publica una etiqueta semver.
+
+## Restricción de despliegue
+
+Ningún workflow configura acceso al clúster ni ejecuta comandos de aplicación
+o actualización de recursos. El pipeline construye, analiza y firma imágenes,
+y únicamente actualiza las etiquetas del repositorio GitOps mediante un Pull
+Request automático. ArgoCD es el único componente autorizado para sincronizar
+los manifiestos en Kubernetes. El namespace, las quotas, los LimitRanges y el
+RBAC son administrados por Terraform.
 
 ## Secretos
 
@@ -75,13 +86,39 @@ terraform -chdir=P8/terraform validate
 python P7/scripts/validate-test-distribution.py
 ```
 
+## Preparación de GKE
+
+El archivo `terraform/cloud.tfvars.example` muestra la configuración para el
+proyecto `p8202300582`. Copiarlo como `cloud.tfvars` sin subir ese archivo al
+repositorio. Antes de aplicar en Google Cloud se debe asociar facturación,
+habilitar las APIs requeridas y autenticar Terraform con ADC. El estado de esta
+ejecución debe ser independiente del estado de la prueba Minikube.
+
+Como el proveedor Kubernetes necesita el contexto de GKE después de crear el
+clúster, la aplicación de infraestructura se hace en dos fases desde una
+terminal autorizada del administrador:
+
+```bash
+terraform -chdir=P8/terraform init
+terraform -chdir=P8/terraform plan -target=google_container_node_pool.primary -var-file=cloud.tfvars
+terraform -chdir=P8/terraform apply -target=google_container_node_pool.primary -var-file=cloud.tfvars
+gcloud container clusters get-credentials p8-202300582 \
+  --zone us-central1-a --project p8202300582
+terraform -chdir=P8/terraform plan -var-file=cloud.tfvars
+terraform -chdir=P8/terraform apply -var-file=cloud.tfvars
+```
+
+El clúster GKE no se crea hasta ejecutar explícitamente `apply` con ese archivo;
+la prueba local usa `manage_minikube=true` y no requiere facturación.
+
 ## Evidencia pendiente
 
 La ejecución real de Trivy/Cosign, el estado `Synced`/`Healthy` de ArgoCD y el
 rollback inducido dependen de un clúster con ArgoCD, Argo Rollouts, Kyverno y
 External Secrets instalados. En esta versión no se ejecutan pruebas de carga ni
-pruebas de humo. El `AnalysisTemplate` solo actúa como compuerta mínima de
-disponibilidad del canary para permitir promoción o rollback.
+pruebas de humo, conforme al alcance indicado para la práctica. El
+`AnalysisTemplate` solo actúa como compuerta mínima de disponibilidad del canary
+para permitir promoción o rollback.
 
 ## Informe de incidente
 
