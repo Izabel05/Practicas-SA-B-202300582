@@ -40,7 +40,7 @@ jobs:
       - name: Verificar ausencia de secretos en texto plano
         shell: bash
         run: |
-          if grep -RInE 'password: *[^"{].+|token: *[^"{].+|DATABASE_URL=.*://' P8 --exclude='*.md'; then
+          if grep -RInE 'password:[[:space:]]+[^[:space:]"]|token:[[:space:]]+[^[:space:]"]|DATABASE_URL=.*://' P8 --exclude='*.md'; then
             echo 'Se detectaron posibles secretos en P8' >&2
             exit 1
           fi
@@ -154,7 +154,7 @@ jobs:
           body: |
             PR generado automaticamente por P8.
 
-            - Version: `${{ needs.prepare.outputs.version }}`
+            - Version: ${{ needs.prepare.outputs.version }}
             - Trivy, SBOM y firma Cosign ejecutados en el repositorio de codigo.
             - ArgoCD aplicara el cambio despues de la revision.
           labels: gitops,automated
