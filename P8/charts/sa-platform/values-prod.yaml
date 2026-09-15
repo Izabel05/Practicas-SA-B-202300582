@@ -1,0 +1,75 @@
+api-gateway:
+  replicaCount: 3
+  autoscaling:
+    minReplicas: 3
+  image:
+    tag: "0.1.1"
+
+autenticacion-ms:
+  replicaCount: 3
+  autoscaling:
+    minReplicas: 3
+  image:
+    tag: "0.1.0"
+  config:
+    logLevel: info
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+auth-database:
+  persistence:
+    size: 5Gi
+
+catalogo-ms:
+  replicaCount: 3
+  autoscaling:
+    minReplicas: 3
+  image:
+    tag: "0.1.0"
+  config:
+    logLevel: info
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+catalog-database:
+  persistence:
+    size: 5Gi
+
+prestamos-ms:
+  replicaCount: 3
+  autoscaling:
+    minReplicas: 3
+  image:
+    tag: "0.2.2"
+  config:
+    logLevel: info
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 256Mi}
+
+loans-database:
+  persistence:
+    size: 5Gi
+
+multas-ms:
+  replicaCount: 3
+  autoscaling: {minReplicas: 3}
+  config: {logLevel: info, dailyRate: "5.00"}
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 256Mi}
+
+fines-database:
+  persistence: {size: 5Gi}
+rabbitmq:
+  persistence: {size: 5Gi}

@@ -1,0 +1,160 @@
+name: P8 GitOps - progressive delivery and supply-chain security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+concurrency:
+  group: p8-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/izabel05
+  GITOPS_REPOSITORY: Izabel05/GItOps_202300582
+  GITOPS_FILE: environments/dev/values-p8.yaml
+
+jobs:
+  prepare:
+    name: 0 - Version and static checks
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF#refs/tags/}"
+          else
+            version="sha-${GITHUB_SHA::7}"
+          fi
+          [[ "$version" != latest ]] || { echo 'latest esta prohibido'; exit 1; }
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+      - name: Validar seleccion de pruebas de P7
+        run: python P7/scripts/validate-test-distribution.py
+      - name: Verificar ausencia de secretos en texto plano
+        shell: bash
+        run: |
+          if grep -RInE 'password: *[^"{].+|token: *[^"{].+|DATABASE_URL=.*://' P8 --exclude='*.md'; then
+            echo 'Se detectaron posibles secretos en P8' >&2
+            exit 1
+          fi
+
+  helm-lint:
+    name: 1 - Helm lint
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Construir dependencias del chart
+        run: helm dependency build P8/charts/sa-platform
+      - name: Validar charts
+        run: helm lint P8/charts/sa-platform -f P8/charts/sa-platform/values-p8.yaml
+
+  build-scan-sign:
+    name: 3 - Build, Trivy, SBOM and Cosign - ${{ matrix.image }}
+    needs: [prepare, helm-lint]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {image: api-gateway, context: P4/Backend/api-gateway}
+          - {image: autenticacion-ms, context: P4/Backend/autenticacion-ms}
+          - {image: catalogo-ms, context: P4/Backend/catalogo-ms}
+          - {image: prestamos-ms, context: P4/Backend/prestamos-ms}
+          - {image: multas-ms, context: P4/Backend/multas-ms}
+          - {image: cronjobs-worker, context: P6/cronjobs/cronjob2}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Login en GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Construir imagen versionada
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.context }}/Dockerfile.prod
+          load: ${{ github.event_name == 'pull_request' }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.IMAGE_PREFIX }}/sa-${{ matrix.image }}:${{ needs.prepare.outputs.version }}
+      - name: Escanear vulnerabilidades criticas con Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.IMAGE_PREFIX }}/sa-${{ matrix.image }}:${{ needs.prepare.outputs.version }}
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+          format: sarif
+          output: P8/evidence/trivy-${{ matrix.image }}.sarif
+      - name: Generar SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.IMAGE_PREFIX }}/sa-${{ matrix.image }}:${{ needs.prepare.outputs.version }}
+          format: cyclonedx-json
+          output-file: P8/evidence/sbom-${{ matrix.image }}.json
+      - name: Instalar Cosign
+        if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@v3.7.0
+      - name: Firmar imagen con identidad OIDC
+        if: github.event_name != 'pull_request'
+        env:
+          COSIGN_EXPERIMENTAL: '1'
+        run: cosign sign --yes "${{ env.IMAGE_PREFIX }}/sa-${{ matrix.image }}:${{ needs.prepare.outputs.version }}"
+      - name: Publicar evidencias
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p8-security-${{ matrix.image }}
+          path: P8/evidence/
+          if-no-files-found: ignore
+
+  update-gitops:
+    name: 4 - PR automatico al repositorio GitOps
+    needs: [prepare, build-scan-sign]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.GITOPS_REPOSITORY }}
+          token: ${{ secrets.GITOPS_TOKEN }}
+          path: gitops
+      - name: Actualizar tags en GitOps
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: python P8/scripts/update-gitops.py "gitops/${{ env.GITOPS_FILE }}" "$VERSION"
+      - name: Abrir Pull Request de promocion
+        uses: peter-evans/create-pull-request@v7
+        with:
+          path: gitops
+          token: ${{ secrets.GITOPS_TOKEN }}
+          branch: automation/promote-${{ needs.prepare.outputs.version }}
+          title: "chore: promover ${{ needs.prepare.outputs.version }}"
+          commit-message: "chore: promover ${{ needs.prepare.outputs.version }}"
+          body: |
+            PR generado automaticamente por P8.
+
+            - Version: `${{ needs.prepare.outputs.version }}`
+            - Trivy, SBOM y firma Cosign ejecutados en el repositorio de codigo.
+            - ArgoCD aplicara el cambio despues de la revision.
+          labels: gitops,automated

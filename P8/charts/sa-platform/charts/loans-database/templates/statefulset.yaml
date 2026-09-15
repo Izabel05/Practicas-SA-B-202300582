@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "loans-database.fullname" . }}
+  namespace: {{ include "loans-database.namespace" . }}
+  labels: {{- include "loans-database.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "loans-database.fullname" . }}
+  replicas: 1
+  selector:
+    matchLabels: {{- include "loans-database.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "loans-database.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: postgresql
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          env:
+            - name: POSTGRES_USER
+              valueFrom: {secretKeyRef: {name: {{ include "loans-database.fullname" . }}-credentials, key: postgres-user}}
+            - name: POSTGRES_PASSWORD
+              valueFrom: {secretKeyRef: {name: {{ include "loans-database.fullname" . }}-credentials, key: postgres-password}}
+            - {name: POSTGRES_DB, value: {{ .Values.auth.database | quote }}}
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+          ports:
+            - {name: postgresql, containerPort: {{ .Values.service.port }}}
+          startupProbe:
+            exec: {command: ["sh", "-c", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]}
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+          readinessProbe:
+            exec: {command: ["sh", "-c", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+          livenessProbe:
+            exec: {command: ["sh", "-c", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+            - {name: init-scripts, mountPath: /docker-entrypoint-initdb.d, readOnly: true}
+      volumes:
+        - name: init-scripts
+          configMap: {name: {{ include "loans-database.fullname" . }}-init}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels: {{- include "loans-database.labels" . | nindent 10 }}
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- if .Values.persistence.storageClassName }}
+        storageClassName: {{ .Values.persistence.storageClassName | quote }}
+        {{- end }}
+        resources:
+          requests: {storage: {{ .Values.persistence.size }}}

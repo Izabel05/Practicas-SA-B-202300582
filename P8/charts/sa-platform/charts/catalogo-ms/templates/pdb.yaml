@@ -1,0 +1,15 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "catalogo-ms.fullname" . }}
+  namespace: {{ include "catalogo-ms.namespace" . }}
+  labels:
+    {{- include "catalogo-ms.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "catalogo-ms.selectorLabels" . | nindent 6 }}
+{{- end }}
+

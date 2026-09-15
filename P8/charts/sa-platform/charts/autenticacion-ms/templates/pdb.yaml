@@ -1,0 +1,15 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "autenticacion-ms.fullname" . }}
+  namespace: {{ include "autenticacion-ms.namespace" . }}
+  labels:
+    {{- include "autenticacion-ms.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "autenticacion-ms.selectorLabels" . | nindent 6 }}
+{{- end }}
+

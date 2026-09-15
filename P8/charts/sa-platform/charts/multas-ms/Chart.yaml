@@ -1,0 +1,7 @@
+apiVersion: v2
+name: multas-ms
+description: Subchart del microservicio de multas
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+

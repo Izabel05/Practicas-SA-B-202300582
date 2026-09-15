@@ -1,0 +1,7 @@
+apiVersion: v2
+name: autenticacion-ms
+description: Subchart del microservicio de autenticacion
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+
