@@ -1,9 +1,9 @@
 manage_minikube = false
 manage_gke      = true
 
-gcp_project_id   = "p8202300582"
-gcp_region       = "us-central1"
-gke_location     = "us-central1-a"
+gcp_project_id = "p8202300582"
+gcp_region     = "us-central1"
+gke_location   = "us-central1-a"
 gke_cluster_name = "p8-202300582"
 
 # Un ambiente por ejecución/estado; el canary no usa otro namespace.
