@@ -22,7 +22,7 @@ que ArgoCD sincroniza con Kubernetes.
 | Ejecución exitosa del pipeline | Pendiente de ejecutar tag P8 sin vulnerabilidades críticas |
 | Reversión automática | Pendiente de ejecutar fallo inducido |
 | Despliegue rechazado por política | Pendiente de evidencia Kyverno |
-| Bloqueo por vulnerabilidad crítica | Verificado en la ejecución `35016432570`: Trivy bloqueó las seis imágenes por `CRITICAL` |
+| Bloqueo por vulnerabilidad crítica | Verificado en la ejecución `35051660397`: las seis imágenes pasaron el bloqueo `CRITICAL` de Trivy |
 | Imagen firmada | `ghcr.io/izabel05/sa-<servicio>:vX.Y.Z` |
 | Reporte de prueba de carga | No aplica: excluida del alcance actualizado |
 | Video demostrativo | Pendiente de grabar; agregar URL y minutaje |
