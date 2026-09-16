@@ -40,7 +40,7 @@ jobs:
       - name: Verificar ausencia de secretos en texto plano
         shell: bash
         run: |
-          if grep -RInE 'password:[[:space:]]+[^[:space:]" ]|token:[[:space:]]+[^[:space:]" ]|DATABASE_URL=.*://' P8 --exclude='*.md'; then
+          if grep -RInE 'password: *[^"{].+|token: *[^"{].+|DATABASE_URL=.*://' P8 --exclude='*.md'; then
             echo 'Se detectaron posibles secretos en P8' >&2
             exit 1
           fi
@@ -62,7 +62,8 @@ jobs:
     needs: [prepare, helm-lint]
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
+      actions: read
       packages: write
       id-token: write
     strategy:
@@ -94,7 +95,7 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ env.IMAGE_PREFIX }}/sa-${{ matrix.image }}:${{ needs.prepare.outputs.version }}
       - name: Generar reporte de vulnerabilidades con Trivy
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: ${{ env.IMAGE_PREFIX }}/sa-${{ matrix.image }}:${{ needs.prepare.outputs.version }}
           severity: CRITICAL
@@ -102,7 +103,7 @@ jobs:
           format: sarif
           output: P8/evidence/trivy-${{ matrix.image }}.sarif
       - name: Bloquear vulnerabilidades criticas con Trivy
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: ${{ env.IMAGE_PREFIX }}/sa-${{ matrix.image }}:${{ needs.prepare.outputs.version }}
           severity: CRITICAL
@@ -161,7 +162,7 @@ jobs:
           body: |
             PR generado automaticamente por P8.
 
-            - Version: ${{ needs.prepare.outputs.version }}
+            - Version: `${{ needs.prepare.outputs.version }}`
             - Trivy, SBOM y firma Cosign ejecutados en el repositorio de codigo.
             - ArgoCD aplicara el cambio despues de la revision.
           labels: gitops,automated
