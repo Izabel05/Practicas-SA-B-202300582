@@ -17,6 +17,7 @@ RUN apt-get update \
     && apt-get upgrade -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
+    && python -m pip install --no-cache-dir --upgrade "setuptools>=83.0.0" "msgpack>=1.2.1" \
     && groupadd --gid 10001 app \
     && useradd --uid 10001 --gid app --no-create-home app
 WORKDIR /app
