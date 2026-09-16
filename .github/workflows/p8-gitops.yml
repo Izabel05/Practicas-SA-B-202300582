@@ -40,7 +40,7 @@ jobs:
       - name: Verificar ausencia de secretos en texto plano
         shell: bash
         run: |
-          if grep -RInE 'password: *[^"{].+|token: *[^"{].+|DATABASE_URL=.*://' P8 --exclude='*.md'; then
+          if grep -RInE "password: *[\"']?[^\"'[:space:]]|token: *[\"']?[^\"'[:space:]]|DATABASE_URL=.*://" P8 --exclude='*.md' --exclude='values.example.yaml'; then
             echo 'Se detectaron posibles secretos en P8' >&2
             exit 1
           fi
