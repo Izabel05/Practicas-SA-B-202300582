@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS dependencies
+FROM python:3.12-slim-bookworm AS dependencies
 
 WORKDIR /build
 COPY requirements.txt ./
@@ -9,11 +9,16 @@ FROM dependencies AS build
 COPY app ./app
 RUN python -m compileall -q app
 
-FROM python:3.12-slim AS production
+FROM python:3.12-slim-bookworm AS production
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
-RUN groupadd --gid 10001 app && useradd --uid 10001 --gid app --no-create-home app
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --gid 10001 app \
+    && useradd --uid 10001 --gid app --no-create-home app
 WORKDIR /app
 COPY --from=dependencies /install /usr/local
 COPY --from=build --chown=10001:10001 /build/app ./app
