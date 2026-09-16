@@ -70,8 +70,10 @@ RBAC son administrados por Terraform.
 
 Los charts no generan secretos con valores en el repositorio. Se esperan siete
 `ExternalSecret` respaldados por un `ClusterSecretStore` llamado
-`cluster-secret-store`. Las claves remotas son `p8/<secret>/<key>` y deben
-configurarse en el proveedor de secretos antes de sincronizar ArgoCD.
+`cluster-secret-store`. Cada clave remota `p8-<secret>` debe contener un JSON
+con los campos que necesita el `Secret` de Kubernetes (por ejemplo,
+`database-url`, `postgres-user` y `postgres-password`). El chart usa
+`dataFrom.extract` para conservar una sola entrada por secreto lógico.
 
 El pipeline requiere el secreto de GitHub Actions `GITOPS_TOKEN`, limitado al
 repositorio `Izabel05/GItOps_202300582`, para abrir el PR automático.
@@ -108,13 +110,13 @@ terraform -chdir=P8/terraform plan -var-file=cloud.tfvars
 terraform -chdir=P8/terraform apply -var-file=cloud.tfvars
 ```
 
-El clúster GKE no se crea hasta ejecutar explícitamente `apply` con ese archivo;
-la prueba local usa `manage_minikube=true` y no requiere facturación.
+El clúster GKE no se crea hasta ejecutar explícitamente `apply` con ese
+archivo; la prueba local usa `manage_minikube=true` y no requiere facturación.
 
 ## Evidencia pendiente
 
-La ejecución real de Trivy/Cosign, el estado `Synced`/`Healthy` de ArgoCD y el
-rollback inducido dependen de un clúster con ArgoCD, Argo Rollouts, Kyverno y
+La ejecución real de Trivy/Cosign, el estado `Synced`/`Healthy` de ArgoCD y
+el rollback inducido dependen de un clúster con ArgoCD, Argo Rollouts, Kyverno y
 External Secrets instalados. En esta versión no se ejecutan pruebas de carga ni
 pruebas de humo, conforme al alcance indicado para la práctica. El
 `AnalysisTemplate` solo actúa como compuerta mínima de disponibilidad del canary
