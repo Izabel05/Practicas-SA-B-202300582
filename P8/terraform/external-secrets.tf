@@ -10,9 +10,15 @@ resource "google_project_iam_member" "external_secrets_secret_accessor" {
   member  = "serviceAccount:${google_service_account.external_secrets.email}"
 }
 
-resource "kubernetes_service_account_v1" "external_secrets" {
+resource "google_service_account_iam_member" "external_secrets_workload_identity" {
+  service_account_id = google_service_account.external_secrets.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:${var.gcp_project_id}.svc.id.goog[external-secrets/p8-external-secrets]"
+}
+
+resource "kubernetes_service_account_v1" "external_secrets_identity" {
   metadata {
-    name      = "external-secrets"
+    name      = "p8-external-secrets"
     namespace = "external-secrets"
     annotations = {
       "iam.gke.io/gcp-service-account" = google_service_account.external_secrets.email
@@ -20,7 +26,10 @@ resource "kubernetes_service_account_v1" "external_secrets" {
   }
 
   automount_service_account_token = true
-  depends_on                      = [google_project_iam_member.external_secrets_secret_accessor]
+  depends_on = [
+    google_project_iam_member.external_secrets_secret_accessor,
+    google_service_account_iam_member.external_secrets_workload_identity,
+  ]
 }
 
 resource "kubernetes_manifest" "cluster_secret_store" {
@@ -37,9 +46,12 @@ resource "kubernetes_manifest" "cluster_secret_store" {
           auth = {
             workloadIdentity = {
               serviceAccountRef = {
-                name      = kubernetes_service_account_v1.external_secrets.metadata[0].name
-                namespace = kubernetes_service_account_v1.external_secrets.metadata[0].namespace
+                name      = kubernetes_service_account_v1.external_secrets_identity.metadata[0].name
+                namespace = kubernetes_service_account_v1.external_secrets_identity.metadata[0].namespace
               }
+              clusterLocation  = var.gke_location
+              clusterName      = var.gke_cluster_name
+              clusterProjectID = var.gcp_project_id
             }
           }
         }
@@ -47,5 +59,5 @@ resource "kubernetes_manifest" "cluster_secret_store" {
     }
   }
 
-  depends_on = [kubernetes_service_account_v1.external_secrets]
+  depends_on = [kubernetes_service_account_v1.external_secrets_identity]
 }
