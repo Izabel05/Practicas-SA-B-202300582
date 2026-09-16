@@ -5,3 +5,5 @@ psycopg[binary,pool]==3.3.5
 pika==1.4.4
 strawberry-graphql[fastapi]==0.323.2
 uvicorn[standard]==0.53.0
+msgpack==1.2.1
+setuptools==83.0.0
