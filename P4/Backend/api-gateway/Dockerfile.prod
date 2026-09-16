@@ -11,6 +11,7 @@ FROM nginxinc/nginx-unprivileged:1.31-alpine3.24 AS production
 
 # Actualizar los paquetes del sistema para no conservar CVE corregidas en la
 # imagen base cacheada.
+USER root
 RUN apk upgrade --no-cache
 
 COPY --from=validation /etc/nginx/nginx.conf /etc/nginx/nginx.conf
