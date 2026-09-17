@@ -23,6 +23,10 @@ spec:
           automountServiceAccountToken: false
           restartPolicy: Never
           securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
+          {{- with .Values.global.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           containers:
             - name: cronjob2
               image: "{{ .Values.cronjob2.image.repository }}:{{ .Values.cronjob2.image.tag }}"
