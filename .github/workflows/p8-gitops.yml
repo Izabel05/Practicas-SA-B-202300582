@@ -124,6 +124,59 @@ jobs:
         env:
           COSIGN_EXPERIMENTAL: '1'
         run: cosign sign --yes "${{ env.IMAGE_PREFIX }}/sa-${{ matrix.image }}:${{ needs.prepare.outputs.version }}"
+      - name: Verificar firma antes de promover a GitOps
+        if: github.event_name != 'pull_request'
+        env:
+          COSIGN_EXPERIMENTAL: '1'
+        run: |
+          cosign verify \
+            --certificate-identity-regexp '^https://github.com/Izabel05/Practicas-SA-B-202300582/.github/workflows/p8-gitops.yml@refs/tags/v[0-9]+\.[0-9]+\.[0-9]+      - name: Publicar evidencias
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p8-security-${{ matrix.image }}
+          path: P8/evidence/
+          if-no-files-found: ignore
+
+  update-gitops:
+    name: 4 - PR automatico al repositorio GitOps
+    needs: [prepare, build-scan-sign]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.GITOPS_REPOSITORY }}
+          token: ${{ secrets.GITOPS_TOKEN }}
+          path: gitops
+      - name: Actualizar tags en GitOps
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: python P8/scripts/update-gitops.py "gitops/${{ env.GITOPS_FILE }}" "$VERSION"
+      - name: Abrir Pull Request de promocion
+        uses: peter-evans/create-pull-request@v7
+        with:
+          path: gitops
+          token: ${{ secrets.GITOPS_TOKEN }}
+          branch: automation/promote-${{ needs.prepare.outputs.version }}
+          title: "chore: promover ${{ needs.prepare.outputs.version }}"
+          commit-message: "chore: promover ${{ needs.prepare.outputs.version }}"
+          body: |
+            PR generado automaticamente por P8.
+
+            - Version: `${{ needs.prepare.outputs.version }}`
+            - Trivy, SBOM y firma Cosign ejecutados en el repositorio de codigo.
+            - ArgoCD aplicara el cambio despues de la revision.
+          labels: gitops,automated
+ \
+            --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+            --output json \
+            "${{ env.IMAGE_PREFIX }}/sa-${{ matrix.image }}:${{ needs.prepare.outputs.version }}" \
+            | tee "P8/evidence/cosign-verify-${{ matrix.image }}.json"
       - name: Publicar evidencias
         if: always()
         uses: actions/upload-artifact@v4
