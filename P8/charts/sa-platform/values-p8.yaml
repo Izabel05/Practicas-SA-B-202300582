@@ -17,7 +17,7 @@ api-gateway:
     name: api-gateway
   image:
     repository: ghcr.io/izabel05/sa-api-gateway
-    tag: "v0.1.0"
+    tag: "v1.2.2"
   autoscaling:
     enabled: true
     minReplicas: 2
@@ -57,7 +57,7 @@ autenticacion-ms:
     name: autenticacion-ms
   image:
     repository: ghcr.io/izabel05/sa-autenticacion-ms
-    tag: "v0.1.0"
+    tag: "v1.2.2"
   auth:
     secretName: jwt-credentials
 
@@ -68,7 +68,7 @@ catalogo-ms:
     name: catalogo-ms
   image:
     repository: ghcr.io/izabel05/sa-catalogo-ms
-    tag: "v0.1.0"
+    tag: "v1.2.2"
 
 prestamos-ms:
   fullnameOverride: prestamos-ms
@@ -77,7 +77,7 @@ prestamos-ms:
     name: prestamos-ms
   image:
     repository: ghcr.io/izabel05/sa-prestamos-ms
-    tag: "v0.1.0"
+    tag: "v1.2.2"
   dependencies:
     catalogUrl: http://catalogo-ms.sa-p8.svc.cluster.local:8082
 
@@ -88,16 +88,16 @@ multas-ms:
     name: multas-ms
   image:
     repository: ghcr.io/izabel05/sa-multas-ms
-    tag: "v0.1.0"
+    tag: "v1.2.2"
 
 cronjob2:
-  concurrencyPolicy: Replace
+  concurrencyPolicy: Forbid
   image:
     repository: ghcr.io/izabel05/sa-cronjobs-worker
-    tag: "v0.1.0"
+    tag: "v1.2.2"
 
 summaryConsumer:
   image:
     repository: ghcr.io/izabel05/sa-cronjobs-worker
-    tag: "v0.1.0"
+    tag: "v1.2.2"
 
