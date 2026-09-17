@@ -28,6 +28,10 @@ spec:
       automountServiceAccountToken: false
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: autenticacion-ms
           image: "{{ required "image.repository es obligatorio" .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
