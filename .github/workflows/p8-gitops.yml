@@ -124,6 +124,17 @@ jobs:
         env:
           COSIGN_EXPERIMENTAL: '1'
         run: cosign sign --yes "${{ env.IMAGE_PREFIX }}/sa-${{ matrix.image }}:${{ needs.prepare.outputs.version }}"
+      - name: Verificar firma antes de promover a GitOps
+        if: github.event_name != 'pull_request'
+        env:
+          COSIGN_EXPERIMENTAL: '1'
+        run: |
+          cosign verify \
+            --certificate-identity-regexp '^https://github.com/Izabel05/Practicas-SA-B-202300582/.github/workflows/p8-gitops.yml@refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$' \
+            --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+            --output json \
+            "${{ env.IMAGE_PREFIX }}/sa-${{ matrix.image }}:${{ needs.prepare.outputs.version }}" \
+            | tee "P8/evidence/cosign-verify-${{ matrix.image }}.json"
       - name: Publicar evidencias
         if: always()
         uses: actions/upload-artifact@v4
