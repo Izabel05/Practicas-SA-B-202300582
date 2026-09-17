@@ -20,9 +20,9 @@ que ArgoCD sincroniza con Kubernetes.
 | Repositorio GitOps | https://github.com/Izabel05/GItOps_202300582 |
 | Aplicación en ArgoCD | `sa-platform-p8`, namespace `sa-p8` |
 | Ejecución exitosa del pipeline | https://github.com/Izabel05/Practicas-SA-B-202300582/actions/runs/35185935349 |
-| Reversión automática | Pendiente de ejecutar fallo inducido |
-| Despliegue rechazado por política | Pendiente de evidencia Kyverno |
-| Bloqueo por vulnerabilidad crítica | Control activo; la ejecución `35185935349` validó las seis imágenes sin vulnerabilidades `CRITICAL`. Pendiente evidencia de un bloqueo deliberado. |
+| Reversión automática | PR GitOps [#20](https://github.com/Izabel05/GItOps_202300582/pull/20), restauración [#21](https://github.com/Izabel05/GItOps_202300582/pull/21) e informe `P8/docs/informe-incidente.md` |
+| Despliegue rechazado por política | Evidencia documentada en `P8/docs/evidencias-controles.md` |
+| Bloqueo por vulnerabilidad crítica | PR cerrado sin fusionar [#4](https://github.com/Izabel05/Practicas-SA-B-202300582/pull/4) y [ejecución #80](https://github.com/Izabel05/Practicas-SA-B-202300582/actions/runs/35186897878) |
 | Imagen firmada | `ghcr.io/izabel05/sa-<servicio>:vX.Y.Z` |
 | Reporte de prueba de carga | No aplica: excluida del alcance actualizado |
 | Video demostrativo | Pendiente de grabar; agregar URL y minutaje |
