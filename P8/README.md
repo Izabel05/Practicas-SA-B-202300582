@@ -39,7 +39,7 @@ tag vX.Y.Z
   -> PR automático al repositorio GitOps
   -> ArgoCD sincroniza
   -> Argo Rollouts: 20% -> 50% -> 80% -> 100%
-  -> AnalysisTemplate valida disponibilidad mínima del canary
+  -> AnalysisTemplate valida la integración del Gateway con los microservicios
   -> promoción o rollback automático
 ```
 
@@ -110,19 +110,23 @@ terraform -chdir=P8/terraform plan -var-file=cloud.tfvars
 terraform -chdir=P8/terraform apply -var-file=cloud.tfvars
 ```
 
-El clúster GKE no se crea hasta ejecutar explícitamente `apply` con ese
-archivo; la prueba local usa `manage_minikube=true` y no requiere facturación.
+El clúster GKE no se crea hasta ejecutar explícitamente `apply` con ese archivo;
+la prueba local usa `manage_minikube=true` y no requiere facturación.
 
-## Evidencia pendiente
+## Estado verificado en GKE
 
-La ejecución real de Trivy/Cosign, el estado `Synced`/`Healthy` de ArgoCD y
-el rollback inducido dependen de un clúster con ArgoCD, Argo Rollouts, Kyverno y
-External Secrets instalados. En esta versión no se ejecutan pruebas de carga ni
-pruebas de humo, conforme al alcance indicado para la práctica. El
-`AnalysisTemplate` solo actúa como compuerta mínima de disponibilidad del canary
-para permitir promoción o rollback.
+La aplicación `sa-platform-p8` fue verificada en estado `Synced` y `Healthy`.
+El Rollout del API Gateway completó las etapas 20 %, 50 % y 80 %, y las tres
+ejecuciones del `AnalysisTemplate` de integración terminaron correctamente.
+Los ocho `ExternalSecret` se encuentran sincronizados y las tres políticas de
+Kyverno están activas. No se ejecutan pruebas de carga ni pruebas de humo,
+conforme a la excepción establecida para esta práctica.
+
+La captura o URL pública de la demostración, el fallo inducido final y el video
+deben agregarse a la tabla de enlaces antes de la entrega.
 
 ## Informe de incidente
 
 Debe completarse en una página con exactamente cinco campos. La plantilla está
 en `docs/informe-incidente.md`.
+
