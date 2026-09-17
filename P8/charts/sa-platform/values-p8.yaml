@@ -1,5 +1,7 @@
 global:
   namespace: sa-p8
+  imagePullSecrets:
+    - name: ghcr-pull-secret
 
 externalSecrets:
   enabled: true
