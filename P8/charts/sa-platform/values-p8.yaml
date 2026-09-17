@@ -2,6 +2,7 @@ global:
   namespace: sa-p8
   imagePullSecrets:
     - name: ghcr-pull-secret
+  rolloutNonce: "2026-09-17-integration-v9"
 
 externalSecrets:
   enabled: true
@@ -18,25 +19,36 @@ api-gateway:
     repository: ghcr.io/izabel05/sa-api-gateway
     tag: "v0.1.0"
   autoscaling:
-    enabled: false
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 70
   service:
     type: ClusterIP
     port: 8080
+  upstreams:
+    resolver: kube-dns.kube-system.svc.cluster.local
+    autenticacion: autenticacion-ms.sa-p8.svc.cluster.local:8081
+    catalogo: catalogo-ms.sa-p8.svc.cluster.local:8082
+    prestamos: prestamos-ms.sa-p8.svc.cluster.local:8083
+    multas: multas-ms.sa-p8.svc.cluster.local:8084
   rollout:
     enabled: true
     stableService: api-gateway
     canaryService: api-gateway-canary
-    analysisTemplate: gateway-health
+    analysisTemplate: gateway-integration
+    maxSurge: 100%
+    maxUnavailable: 50%
     steps:
       - setWeight: 20
       - pause: {duration: 30s}
-      - analysis: {templates: [{templateName: gateway-health}]}
+      - analysis: {templates: [{templateName: gateway-integration}]}
       - setWeight: 50
       - pause: {duration: 30s}
-      - analysis: {templates: [{templateName: gateway-health}]}
+      - analysis: {templates: [{templateName: gateway-integration}]}
       - setWeight: 80
       - pause: {duration: 30s}
-      - analysis: {templates: [{templateName: gateway-health}]}
+      - analysis: {templates: [{templateName: gateway-integration}]}
 
 autenticacion-ms:
   fullnameOverride: autenticacion-ms
@@ -66,6 +78,8 @@ prestamos-ms:
   image:
     repository: ghcr.io/izabel05/sa-prestamos-ms
     tag: "v0.1.0"
+  dependencies:
+    catalogUrl: http://catalogo-ms.sa-p8.svc.cluster.local:8082
 
 multas-ms:
   fullnameOverride: multas-ms
@@ -77,6 +91,7 @@ multas-ms:
     tag: "v0.1.0"
 
 cronjob2:
+  concurrencyPolicy: Replace
   image:
     repository: ghcr.io/izabel05/sa-cronjobs-worker
     tag: "v0.1.0"
@@ -85,3 +100,4 @@ summaryConsumer:
   image:
     repository: ghcr.io/izabel05/sa-cronjobs-worker
     tag: "v0.1.0"
+
