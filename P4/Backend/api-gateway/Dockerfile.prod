@@ -1,4 +1,4 @@
-FROM nginxinc/nginx-unprivileged:1.31-alpine3.24 AS validation
+FROM nginxinc/nginx-unprivileged:1.20-alpine AS validation
 
 COPY nginx.conf /etc/nginx/nginx.conf
 # El DNS de Kubernetes no existe durante el build. Validar una copia con un
@@ -7,12 +7,10 @@ RUN sed 's/resolver kube-dns\.kube-system\.svc\.cluster\.local/resolver 127.0.0.
       /etc/nginx/nginx.conf > /tmp/nginx.test.conf \
     && nginx -t -c /tmp/nginx.test.conf
 
-FROM nginxinc/nginx-unprivileged:1.31-alpine3.24 AS production
+FROM nginxinc/nginx-unprivileged:1.20-alpine AS production
 
-# Actualizar los paquetes del sistema para no conservar CVE corregidas en la
-# imagen base cacheada.
 USER root
-RUN apk upgrade --no-cache
+# Omisión deliberada de actualizaciones para comprobar el bloqueo de Trivy.
 
 COPY --from=validation /etc/nginx/nginx.conf /etc/nginx/nginx.conf
 
