@@ -17,6 +17,10 @@ spec:
       serviceAccountName: summary-consumer
       automountServiceAccountToken: false
       securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: summary-consumer
           image: "{{ .Values.summaryConsumer.image.repository }}:{{ .Values.summaryConsumer.image.tag }}"
