@@ -3,11 +3,11 @@
 apiVersion: argoproj.io/v1alpha1
 kind: AnalysisTemplate
 metadata:
-  name: gateway-health
+  name: gateway-integration
   namespace: {{ .Values.global.namespace }}
 spec:
   metrics:
-    - name: gateway-health
+    - name: gateway-downstream-integration
       interval: 10s
       count: 3
       successCondition: result[0] == 1
@@ -19,13 +19,22 @@ spec:
             template:
               spec:
                 restartPolicy: Never
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 100
+                  seccompProfile: {type: RuntimeDefault}
                 containers:
-                  - name: health-check
+                  - name: integration-check
                     image: curlimages/curl:8.10.1
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      capabilities: {drop: [ALL]}
+                    resources:
+                      requests: {cpu: 10m, memory: 32Mi}
+                      limits: {cpu: 50m, memory: 64Mi}
                     command: [sh, -c]
                     args:
                       - >-
-                        curl --fail --silent --show-error --max-time 5
-                        http://api-gateway-canary:8080/health >/dev/null
-                        && echo 1 || echo 0
+                        set -eu; for route in auth catalogo prestamos multas; do curl --fail --silent --show-error --max-time 5 "http://api-gateway-canary:8080/health/$route" >/dev/null; done; echo 1
 {{- end }}
+
