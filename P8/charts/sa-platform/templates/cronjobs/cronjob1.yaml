@@ -30,6 +30,10 @@ spec:
             runAsGroup: 70
             fsGroup: 70
             seccompProfile: {type: RuntimeDefault}
+          {{- with .Values.global.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           containers:
             - name: cronjob1
               image: "{{ .Values.cronjob1.image.repository }}:{{ .Values.cronjob1.image.tag }}"
