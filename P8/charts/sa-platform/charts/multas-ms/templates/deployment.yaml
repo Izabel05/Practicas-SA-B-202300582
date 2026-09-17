@@ -21,6 +21,10 @@ spec:
       serviceAccountName: {{ include "multas-ms.serviceAccountName" . }}
       automountServiceAccountToken: false
       securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: multas-ms
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
