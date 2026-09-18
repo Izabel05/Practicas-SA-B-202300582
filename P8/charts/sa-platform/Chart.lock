@@ -1,0 +1,36 @@
+dependencies:
+- name: auth-database
+  repository: ""
+  version: 0.1.0
+- name: catalog-database
+  repository: ""
+  version: 0.1.0
+- name: loans-database
+  repository: ""
+  version: 0.1.0
+- name: fines-database
+  repository: ""
+  version: 0.1.0
+- name: cronjobs-database
+  repository: ""
+  version: 0.1.0
+- name: rabbitmq
+  repository: ""
+  version: 0.1.0
+- name: api-gateway
+  repository: ""
+  version: 0.1.0
+- name: autenticacion-ms
+  repository: ""
+  version: 0.1.0
+- name: catalogo-ms
+  repository: ""
+  version: 0.1.0
+- name: prestamos-ms
+  repository: ""
+  version: 0.1.0
+- name: multas-ms
+  repository: ""
+  version: 0.1.0
+digest: sha256:afcab3c344b60e741cdd96b3b2ab4a7232a3ead3de0ea6a2b29c3b0e05c3b3e0
+generated: "2026-09-17T19:22:15.373307446-06:00"
