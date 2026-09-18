@@ -28,7 +28,6 @@ que ArgoCD sincroniza con Kubernetes.
 | Video demostrativo | Pendiente de grabar; agregar URL y minutaje |
 
 ## Flujo implementado
-
 ![alt text](Diagrama.png)
 
 ## Componentes
