@@ -69,3 +69,8 @@ securityContext:
   capabilities:
     drop:
       - ALL
+
+rollout:
+  enabled: false
+  stableService: api-gateway
+  canaryService: api-gateway-canary
