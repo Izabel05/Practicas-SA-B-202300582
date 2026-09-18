@@ -25,7 +25,7 @@ que ArgoCD sincroniza con Kubernetes.
 | Bloqueo por vulnerabilidad crítica | PR cerrado sin fusionar [#4](https://github.com/Izabel05/Practicas-SA-B-202300582/pull/4) y [ejecución #80](https://github.com/Izabel05/Practicas-SA-B-202300582/actions/runs/35186897878) |
 | Imagen firmada | `ghcr.io/izabel05/sa-<servicio>:vX.Y.Z` |
 | Reporte de prueba de carga | No aplica: excluida del alcance actualizado |
-| Video demostrativo | Pendiente de grabar; agregar URL y minutaje |
+| Video demostrativo | https://drive.google.com/file/d/1wPt5xeZr-2l0EpEhS7T1pqe25B4XYzEr/view?usp=sharing ,Duracion 15:55 minutos|
 
 ## Flujo implementado
 ![alt text](Diagrama.png)
