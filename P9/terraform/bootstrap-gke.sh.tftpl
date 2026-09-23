@@ -1,0 +1,177 @@
+set -euo pipefail
+
+gcloud container clusters get-credentials '${cluster_name}' \
+  --zone '${cluster_location}' \
+  --project '${project_id}'
+
+helm repo add argo https://argoproj.github.io/argo-helm --force-update
+helm repo add external-secrets https://charts.external-secrets.io --force-update
+helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts --force-update
+helm repo update
+
+helm upgrade --install argocd argo/argo-cd \
+  --namespace argocd \
+  --create-namespace \
+  --wait \
+  --timeout 15m
+
+helm upgrade --install external-secrets external-secrets/external-secrets \
+  --namespace external-secrets \
+  --create-namespace \
+  --set installCRDs=true \
+  --wait \
+  --timeout 15m
+
+cat > /tmp/p9-velero-values.yaml <<'VALUES'
+serviceAccount:
+  server:
+    create: true
+    name: velero-server
+    annotations:
+      iam.gke.io/gcp-service-account: ${velero_service_account_email}
+
+configuration:
+  backupStorageLocation:
+    - name: default
+      provider: gcp
+      bucket: ${velero_bucket_name}
+      config:
+        serviceAccount: ""
+
+credentials:
+  useSecret: false
+
+# P9 usa File System Backup para respaldar los PVC; no requiere snapshots de
+# proveedor y el chart actual crea un VolumeSnapshotLocation inválido si queda
+# habilitado sin provider.
+snapshotsEnabled: false
+
+deployNodeAgent: true
+nodeAgent:
+  podVolumePath: /var/lib/kubelet/pods
+
+initContainers:
+  - name: velero-plugin-for-gcp
+    image: velero/velero-plugin-for-gcp:v1.10.0
+    volumeMounts:
+      - mountPath: /target
+        name: plugins
+VALUES
+
+helm upgrade --install velero vmware-tanzu/velero \
+  --namespace velero \
+  --create-namespace \
+  --values /tmp/p9-velero-values.yaml \
+  --wait \
+  --timeout 15m
+
+kubectl apply -f - <<'BASE'
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sa-p9
+  labels:
+    app.kubernetes.io/part-of: sa-platform
+    app.kubernetes.io/managed-by: terraform-bootstrap
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: sa-p9-quota
+  namespace: sa-p9
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 6Gi
+    limits.cpu: "12"
+    limits.memory: 12Gi
+    pods: "40"
+    services: "20"
+    secrets: "30"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: sa-p9-limits
+  namespace: sa-p9
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      min:
+        cpu: 10m
+        memory: 32Mi
+      max:
+        cpu: "2"
+        memory: 2Gi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: p9-rollouts
+  namespace: sa-p9
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: p9-external-secrets
+  namespace: external-secrets
+  annotations:
+    iam.gke.io/gcp-service-account: ${external_secrets_service_account_email}
+automountServiceAccountToken: true
+---
+apiVersion: external-secrets.io/v1
+kind: ClusterSecretStore
+metadata:
+  name: cluster-secret-store
+spec:
+  provider:
+    gcpsm:
+      projectID: ${project_id}
+      auth:
+        workloadIdentity:
+          serviceAccountRef:
+            name: p9-external-secrets
+            namespace: external-secrets
+          clusterLocation: ${cluster_location}
+          clusterName: ${cluster_name}
+          clusterProjectID: ${project_id}
+BASE
+
+kubectl apply -f - <<'SCHEDULE'
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: p9-daily
+  namespace: velero
+spec:
+  schedule: "0 2 * * *"
+  template:
+    ttl: 720h
+    includedNamespaces:
+      - sa-p9
+    defaultVolumesToFsBackup: true
+SCHEDULE
+
+# Punto único de entrada GitOps: Terraform instala ArgoCD y aplica el
+# app-of-apps automáticamente, sin pasos manuales después del apply.
+kubectl wait --for=condition=Available deployment/argocd-server \
+  --namespace argocd \
+  --timeout=15m
+kubectl apply -f '${gitops_app_of_apps_url}'
+kubectl wait --for=jsonpath='{.status.sync.status}'=Synced \
+  application/sa-platform-p9-root \
+  --namespace argocd \
+  --timeout=15m
+kubectl wait --for=jsonpath='{.status.health.status}'=Healthy \
+  application/sa-platform-p9 \
+  --namespace argocd \
+  --timeout=15m
+
+rm -f /tmp/p9-velero-values.yaml
