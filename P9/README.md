@@ -9,6 +9,11 @@ el bootstrap GitOps y Velero respalda y restaura los datos persistentes.
 La prueba demuestra que el clúster puede reconstruirse mediante Terraform y que
 los datos reales pueden recuperarse desde un respaldo almacenado fuera del
 clúster.
+## Diagrama de bootstrap
+
+![Diagrama de bootstrap de la plataforma P9](image-22.png)
+
+
 
 ## Componentes
 
@@ -50,7 +55,7 @@ clúster.
 | Restauración de datos | Sección <code>Restauración de datos</code> e imagen <code>image-19.png</code> |
 | Prueba de pérdida de nodo | Sección <code>Pérdida de nodo</code> e imágenes <code>image-14.png</code> a <code>image-17.png</code> |
 | RTO y RPO | Objetivo RTO: 60 minutos; objetivo RPO: 24 horas; valores medidos abajo |
-| Video demostrativo | Sustituir por URL pública y minutaje del video de 5 a 8 minutos |
+| Video demostrativo | https://drive.google.com/file/d/1dB7pvMRKumowT3EvoAFqj8UDgtHOYvKk/view?usp=sharing minutaje: 5:46 |
 
 ## Terraform y node pools
 
@@ -167,6 +172,34 @@ La consulta se realizó en <code>auth_db</code>, tabla <code>usuarios</code>:
     | paula.p9.202300582@biblioteca.local | t
 
 ![Datos reales recuperados desde el restore](image-19.png)
+
+### Namespace temporal de restauración
+
+La consulta de verificación debe ejecutarse en el namespace temporal que aparece
+en el mapeo del restore. El nombre no se debe deducir a partir del nombre del
+recurso Restore. Para identificarlo se utilizan:
+
+    velero restore describe NOMBRE_DEL_RESTORE --details
+    kubectl get pods -A | grep auth-postgresql-0
+
+El resultado esperado es un pod
+<code>auth-postgresql-0</code> dentro de un namespace que comienza con
+<code>sa-p9-restore-</code>. La consulta se ejecuta así:
+
+    export RESTORE_NS=NAMESPACE_TEMPORAL_REAL
+    kubectl exec -n "$RESTORE_NS" auth-postgresql-0 -- sh -c \
+      'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+      -c "SELECT id_usuario, nombre, apellido, correo, activo FROM usuarios;"'
+
+El namespace <code>sa-p9</code> corresponde a la aplicación activa y no debe
+usarse como evidencia de una restauración aislada. Que la consulta en
+<code>sa-p9</code> devuelva <code>(0 rows)</code> no invalida el backup: significa
+que la aplicación activa no fue sobrescrita.
+
+Después de guardar las capturas y comprobar los datos, el namespace temporal se
+puede eliminar sin afectar el backup ni el historial de Velero:
+
+    kubectl delete namespace "$RESTORE_NS"
 
 ## Explicación de las capturas y comandos
 
