@@ -67,18 +67,20 @@ El flujo de bootstrap es:
 Después de ejecutar Terraform no se aplican manualmente los manifiestos de la
 aplicación. ArgoCD es quien sincroniza el repositorio GitOps.
 
-## Velero: servidor del clúster y cliente CLI
+## Velero: servidor del clúster y cliente CLI de Cloud Shell
 
 Velero tiene dos partes diferentes:
 
 1. Los componentes dentro del clúster: <code>velero-server</code>,
    <code>node-agent</code>, CRDs, BackupStorageLocation, Backup y Restore.
-2. El ejecutable local <code>velero</code> instalado en Fedora.
+2. El ejecutable <code>velero</code> instalado en Google Cloud Shell.
 
-Por eso, el error de <code>velero version</code> en Fedora no demuestra que
+Por eso, el error de <code>velero version</code> en Cloud Shell no demuestra que
 Velero falte en Kubernetes. La captura <code>image-10.png</code> demuestra que
 el servidor sí estaba instalado: muestra el pod de Velero, dos node-agents y
 los jobs de mantenimiento.
+
+![Velero instalado en el clúster](image-10.png)
 
 Para comprobar Velero dentro del clúster:
 
@@ -86,13 +88,15 @@ Para comprobar Velero dentro del clúster:
     kubectl get crd | grep velero
     kubectl get backupstoragelocation -n velero
 
-Para comprobar el cliente local:
+Para comprobar el cliente dentro de Cloud Shell:
 
     velero version --client-only
     velero backup get
     velero restore get
 
-Si Fedora responde <code>command not found: velero</code>, únicamente falta
+![Versiones de Velero, BackupStorageLocation, backups y restore](image-11.png)
+
+Si Cloud Shell responde <code>command not found: velero</code>, únicamente falta
 instalar el CLI y agregarlo al <code>PATH</code>. El bootstrap instala el
 servidor mediante Helm:
 
@@ -110,6 +114,8 @@ Backup real utilizado:
     Errors: 0
     Warnings: 6
 
+![Detalle del backup real de Velero](image-13.png)
+
 Restore posterior a la reconstrucción:
 
     p9-restore-rebuild-20260924012106
@@ -118,9 +124,16 @@ Restore posterior a la reconstrucción:
     Errors: 0
     Warnings: 0
 
+![Detalle de la restauración de Velero](image-12.png)
+
 El restore se realizó en un namespace temporal para no sobrescribir la
 aplicación activa. Los cinco PodVolumeRestore terminaron correctamente y los
 PVC restaurados quedaron en estado Bound.
+
+Las capturas de detalle pueden mostrar un mensaje transitorio de
+<code>client rate limiter</code> al consultar información adicional. Esto no
+cambia el resultado principal: el Backup y el Restore aparecen con
+<code>Phase: Completed</code>, sin errores funcionales en la ejecución.
 
 La consulta se realizó en <code>auth_db</code>, tabla <code>usuarios</code>:
 
@@ -140,6 +153,8 @@ Comando: <code>kubectl describe rollout api-gateway -n sa-p9</code>.
 Demuestra que el Rollout terminó en fase Healthy y tiene sus réplicas
 disponibles.
 
+![Rollout saludable](image.png)
+
 ### image-1.png - Rollout desplegado
 
 Comandos: <code>kubectl get rollout -A</code> y
@@ -148,10 +163,14 @@ Demuestra que el Rollout existe en <code>sa-p9</code> y tiene sus réplicas
 listas. El texto <code>unknown command argo for kubectl</code> corresponde a
 un plugin opcional; conviene recortarlo o repetir la captura sin ese error.
 
+![Rollout desplegado](image-1.png)
+
 ### image-2.png - AnalysisTemplate
 
 Comando: <code>kubectl get analysistemplate -n sa-p9</code>.
 Demuestra que <code>gateway-integration</code> está creado.
+
+![AnalysisTemplate creado](image-2.png)
 
 ### image-3.png - Configuración del análisis
 
@@ -159,15 +178,21 @@ Comando: <code>kubectl describe analysistemplate gateway-integration -n sa-p9</c
 Demuestra tres métricas, límite de fallo uno y consultas a los endpoints de
 autenticación, catálogo, préstamos y multas.
 
+![Configuración del AnalysisTemplate](image-3.png)
+
 ### image-4.png - ReplicaSets
 
 Comando: <code>kubectl get rs -n sa-p9</code>.
 Demuestra las réplicas deseadas, actuales y listas de cada servicio.
 
+![ReplicaSets de la aplicación](image-4.png)
+
 ### image-5.png - Imágenes desplegadas
 
 Comando: <code>kubectl get rs -n sa-p9 -o wide</code>.
 Muestra las imágenes utilizadas y los selectores de cada ReplicaSet.
+
+![Imágenes y selectores de los ReplicaSets](image-5.png)
 
 ### image-6.png - Pods de la plataforma
 
@@ -175,11 +200,15 @@ Comando: <code>kubectl get pods -n sa-p9</code>.
 Demuestra que los microservicios, PostgreSQL y RabbitMQ están Running y que los
 CronJobs terminan en Completed.
 
+![Pods de la plataforma](image-6.png)
+
 ### image-7.png - PVC
 
 Comando: <code>kubectl get pvc -n sa-p9</code>.
 Demuestra que los PVC de PostgreSQL y RabbitMQ están Bound, con 2 GiB y la
 clase <code>standard-rwo</code>.
+
+![PVC persistentes](image-7.png)
 
 ### image-8.png - PostgreSQL
 
@@ -187,16 +216,22 @@ Comando: <code>kubectl get pods -n sa-p9 | grep auth</code>.
 Confirma que <code>auth-postgresql-0</code> está Running. Una captura más limpia
 puede usar <code>kubectl get pod auth-postgresql-0 -n sa-p9</code>.
 
+![PostgreSQL de autenticación](image-8.png)
+
 ### image-9.png - StatefulSets
 
 Comando: <code>kubectl get statefulset -n sa-p9</code>.
 Demuestra que PostgreSQL y RabbitMQ tienen una réplica lista.
+
+![StatefulSets de PostgreSQL y RabbitMQ](image-9.png)
 
 ### image-10.png - Velero
 
 Comando: <code>kubectl get pods -n velero</code>.
 Es la evidencia principal de que Velero está instalado dentro del clúster:
 aparecen el servidor, los node-agents y los jobs de mantenimiento.
+
+![Pods de Velero](image-10.png)
 
 ## Comandos finales para evidencias
 
