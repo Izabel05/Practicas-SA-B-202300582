@@ -1,192 +1,236 @@
-   # Practica 9 - Continuidad operativa y recuperación ante desastres
+# Práctica 9 - Continuidad operativa y recuperación ante desastres
 
-## Primera adaptación
+## Objetivo
 
-P9 conserva el backend funcional de P8 y habilita `auth-database` con un PVC.
-Para revisar esta combinación se deben usar `values-p8.yaml` y luego
-`values-p9.yaml`, en ese orden. Las claves externas de secretos usan el
-prefijo `p9-` para mantener aislada esta práctica.
+P9 conserva el backend funcional de P8 y agrega continuidad operativa para la
+plataforma desplegada en GKE. Terraform crea la infraestructura, ArgoCD realiza
+el bootstrap GitOps y Velero respalda y restaura los datos persistentes.
 
-El estado de Terraform de P9 utilizará un backend remoto GCS con configuración
-parcial. La configuración local debe mantenerse en `terraform/backend.hcl`,
-que está excluida del repositorio. El bucket debe ser externo al clúster y
-compartido únicamente por el estado de P9.
-
-> Esta carpeta parte del backend y del flujo GitOps de P8. La primera
-> adaptación habilita `auth-database` dentro de Kubernetes con un PVC para
-> probar respaldos y restauración con Velero. El bootstrap, el backend remoto
-> de Terraform y las pruebas de DR se implementarán progresivamente.
-
-Esta carpeta contiene la implementación de P8 sobre los microservicios de P5,
-P6 y P7. El repositorio de código contiene los workflows y el chart de
-referencia; el repositorio GitOps independiente contiene el chart declarativo
-que ArgoCD sincroniza con Kubernetes.
-
-## Repositorios
-
-| Elemento | URL o ubicación |
-|---|---|
-| Código y workflows | https://github.com/Izabel05/Practicas-SA-B-202300582 |
-| Repositorio GitOps | https://github.com/Izabel05/GItOps_202300582 |
-| Aplicación ArgoCD | `sa-platform-p8` / namespace `sa-p8` |
-
-## Tabla de enlaces obligatoria
-
-| Ítem | Enlace o dato requerido |
-|---|---|
-| Repositorio GitOps | https://github.com/Izabel05/GItOps_202300582 |
-| Aplicación en ArgoCD | `sa-platform-p8`, namespace `sa-p8` |
-| Ejecución exitosa del pipeline | https://github.com/Izabel05/Practicas-SA-B-202300582/actions/runs/35185935349 |
-| Reversión automática | PR GitOps [#20](https://github.com/Izabel05/GItOps_202300582/pull/20), restauración [#21](https://github.com/Izabel05/GItOps_202300582/pull/21) e informe `P8/docs/informe-incidente.md` |
-| Despliegue rechazado por política | Evidencia documentada en `P8/docs/evidencias-controles.md` |
-| Bloqueo por vulnerabilidad crítica | PR cerrado sin fusionar [#4](https://github.com/Izabel05/Practicas-SA-B-202300582/pull/4) y [ejecución #80](https://github.com/Izabel05/Practicas-SA-B-202300582/actions/runs/35186897878) |
-| Imagen firmada | `ghcr.io/izabel05/sa-<servicio>:vX.Y.Z` |
-| Reporte de prueba de carga | No aplica: excluida del alcance actualizado |
-| Video demostrativo | Pendiente de grabar; agregar URL y minutaje |
-
-## Flujo implementado
-
-```text
-tag vX.Y.Z
-  -> compilación y pruebas P7
-  -> helm lint
-  -> build de imágenes sin latest
-  -> Trivy bloquea CRITICAL
-  -> SBOM + firma Cosign
-  -> PR automático al repositorio GitOps
-  -> ArgoCD sincroniza
-  -> Argo Rollouts: 20% -> 50% -> 80% -> 100%
-  -> AnalysisTemplate valida la integración del Gateway con los microservicios
-  -> promoción o rollback automático
-```
+La prueba demuestra que el clúster puede reconstruirse mediante Terraform y que
+los datos reales pueden recuperarse desde un respaldo almacenado fuera del
+clúster.
 
 ## Componentes
 
-- `charts/sa-platform`: chart Helm declarativo únicamente para la aplicación:
-  Rollout/Deployments, Services, ConfigMaps, HPA, ExternalSecrets y políticas
-  de ejecución. El canary y la versión estable conviven en `sa-p8`.
-- `terraform`: reconstrucción del perfil Minikube de prueba y recursos de
-  infraestructura Kubernetes: namespace, ResourceQuota, LimitRange, cuentas,
-  Roles y RoleBindings. También contiene el modo GKE opcional, con red VPC,
-  subredes secundarias, clúster Standard y node pool.
-- `policies/kyverno-policies.yaml`: las tres políticas obligatorias de P8.
-- `.github/workflows/p8-gitops.yml`: pipeline sin credenciales de clúster ni
-  despliegue directo; únicamente genera un PR de promoción al repositorio
-  GitOps cuando se publica una etiqueta semver.
+| Componente | Función |
+|---|---|
+| Terraform | Crea red, clúster, node pool, cuentas de servicio y buckets. |
+| Bootstrap | Instala ArgoCD, External Secrets y Velero, y aplica el app-of-apps. |
+| ArgoCD | Sincroniza el repositorio GitOps con el namespace <code>sa-p9</code>. |
+| PostgreSQL | Conserva datos reales en un PVC. |
+| RabbitMQ | Conserva su cola en un PVC. |
+| Velero | Realiza backups y restores de Kubernetes y de los PVC. |
+| GCS | Almacena el estado remoto de Terraform y los backups de Velero. |
 
-## Restricción de despliegue
+## Repositorios y configuración
 
-Ningún workflow configura acceso al clúster ni ejecuta comandos de aplicación
-o actualización de recursos. El pipeline construye, analiza y firma imágenes,
-y únicamente actualiza las etiquetas del repositorio GitOps mediante un Pull
-Request automático. ArgoCD es el único componente autorizado para sincronizar
-los manifiestos en Kubernetes. El namespace, las quotas, los LimitRanges y el
-RBAC son administrados por Terraform.
+| Elemento | Valor |
+|---|---|
+| Repositorio principal | https://github.com/Izabel05/Practicas-SA-B-202300582 |
+| Repositorio GitOps | https://github.com/Izabel05/GItOps_202300582 |
+| Proyecto GCP | <code>p8202300582</code> |
+| Clúster | <code>p9-202300582</code> |
+| Zona | <code>us-central1-a</code> |
+| Namespace de aplicación | <code>sa-p9</code> |
+| Namespace de Velero | <code>velero</code> |
+| Bucket de Velero | <code>p9-velero-backups-202300582</code> |
+| Aplicación raíz de ArgoCD | <code>sa-platform-p9-root</code> |
+| Aplicación de plataforma | <code>sa-platform-p9</code> |
 
-## Secretos
+## Terraform y node pools
 
-Los charts no generan secretos con valores en el repositorio. Se esperan siete
-`ExternalSecret` respaldados por un `ClusterSecretStore` llamado
-`cluster-secret-store`. Cada clave remota `p8-<secret>` debe contener un JSON
-con los campos que necesita el `Secret` de Kubernetes (por ejemplo,
-`database-url`, `postgres-user` y `postgres-password`). El chart usa
-`dataFrom.extract` para conservar una sola entrada por secreto lógico.
+El estado remoto de Terraform se configura mediante el archivo local
+<code>terraform/backend.hcl</code>, que no debe subirse al repositorio.
 
-El pipeline requiere el secreto de GitHub Actions `GITOPS_TOKEN`, limitado al
-repositorio `Izabel05/GItOps_202300582`, para abrir el PR automático.
+El archivo <code>terraform/gke.tf</code> declara
+<code>remove_default_node_pool = true</code> y el node pool
+<code>p9-202300582-nodes</code>. El recurso
+<code>terraform_data.remove_default_node_pool</code> elimina de forma
+idempotente un <code>default-pool</code> residual después de una interrupción.
 
-## Validación local
+    terraform plan -var-file=cloud.tfvars
+    terraform apply -var-file=cloud.tfvars
+    gcloud container clusters get-credentials p9-202300582 \
+      --zone us-central1-a --project p8202300582
 
-```bash
-helm dependency build P8/charts/sa-platform
-helm lint P8/charts/sa-platform -f P8/charts/sa-platform/values-p8.yaml
-terraform -chdir=P8/terraform init
-terraform -chdir=P8/terraform validate
-python P7/scripts/validate-test-distribution.py
-```
+El resultado esperado del plan estable es:
 
-## Preparación de GKE
+    No changes. Your infrastructure matches the configuration.
 
-El archivo `terraform/cloud.tfvars.example` muestra la configuración para el
-proyecto `p8202300582`. Copiarlo como `cloud.tfvars` sin subir ese archivo al
-repositorio. Antes de aplicar en Google Cloud se debe asociar facturación,
-habilitar las APIs requeridas y autenticar Terraform con ADC. El estado de esta
-ejecución debe ser independiente del estado de la prueba Minikube.
+## Bootstrap automático
 
-Como el proveedor Kubernetes necesita el contexto de GKE después de crear el
-clúster, la aplicación de infraestructura se hace en dos fases desde una
-terminal autorizada del administrador:
+El flujo de bootstrap es:
 
-```bash
-terraform -chdir=P8/terraform init
-terraform -chdir=P8/terraform plan -target=google_container_node_pool.primary -var-file=cloud.tfvars
-terraform -chdir=P8/terraform apply -target=google_container_node_pool.primary -var-file=cloud.tfvars
-gcloud container clusters get-credentials p8-202300582 \
-  --zone us-central1-a --project p8202300582
-terraform -chdir=P8/terraform plan -var-file=cloud.tfvars
-terraform -chdir=P8/terraform apply -var-file=cloud.tfvars
-```
+    Terraform -> GKE -> ArgoCD -> External Secrets -> Velero
+             -> app-of-apps -> sa-platform-p9
 
-El clúster GKE no se crea hasta ejecutar explícitamente `apply` con ese archivo;
-la prueba local usa `manage_minikube=true` y no requiere facturación.
+Después de ejecutar Terraform no se aplican manualmente los manifiestos de la
+aplicación. ArgoCD es quien sincroniza el repositorio GitOps.
 
-## Estado verificado en GKE
+## Velero: servidor del clúster y cliente CLI
 
-La aplicación `sa-platform-p8` fue verificada en estado `Synced` y `Healthy`.
-El Rollout del API Gateway completó las etapas 20 %, 50 % y 80 %, y las tres
-ejecuciones del `AnalysisTemplate` de integración terminaron correctamente.
-Los ocho `ExternalSecret` se encuentran sincronizados y las tres políticas de
-Kyverno están activas. No se ejecutan pruebas de carga ni pruebas de humo,
-conforme a la excepción establecida para esta práctica.
+Velero tiene dos partes diferentes:
 
-La captura o URL pública de la demostración, el fallo inducido final y el video
-deben agregarse a la tabla de enlaces antes de la entrega.
+1. Los componentes dentro del clúster: <code>velero-server</code>,
+   <code>node-agent</code>, CRDs, BackupStorageLocation, Backup y Restore.
+2. El ejecutable local <code>velero</code> instalado en Fedora.
 
-## Informe de incidente
+Por eso, el error de <code>velero version</code> en Fedora no demuestra que
+Velero falte en Kubernetes. La captura <code>image-10.png</code> demuestra que
+el servidor sí estaba instalado: muestra el pod de Velero, dos node-agents y
+los jobs de mantenimiento.
 
-Debe completarse en una página con exactamente cinco campos. La plantilla está
-en `docs/informe-incidente.md`.
+Para comprobar Velero dentro del clúster:
 
-comando : kubectl describe rollout api-gateway -n sa-p9
+    kubectl get pods -n velero
+    kubectl get crd | grep velero
+    kubectl get backupstoragelocation -n velero
 
-![alt text](image-1.png)
+Para comprobar el cliente local:
 
-![alt text](image.png)
+    velero version --client-only
+    velero backup get
+    velero restore get
 
-comando : kubectl get analysistemplate -n sa-p9
+Si Fedora responde <code>command not found: velero</code>, únicamente falta
+instalar el CLI y agregarlo al <code>PATH</code>. El bootstrap instala el
+servidor mediante Helm:
 
-![alt text](image-2.png)
+    helm upgrade --install velero vmware-tanzu/velero \
+      --namespace velero --create-namespace \
+      --values /tmp/p9-velero-values.yaml --wait
 
-comando : kubectl describe analysistemplate gateway-integration -n sa-p9
+## Backup y restore comprobados
 
+Backup real utilizado:
 
-![alt text](image-3.png)
+    p9-real-data-20260923115216
 
-comando : kubectl get rs -n sa-p9
+    Phase: Completed
+    Errors: 0
+    Warnings: 6
 
-![alt text](image-4.png)
+Restore posterior a la reconstrucción:
 
-Comando: kubectl get rs -n sa-p9 -o wide
+    p9-restore-rebuild-20260924012106
 
-![alt text](image-5.png)
+    Phase: Completed
+    Errors: 0
+    Warnings: 0
 
-Comando : kubectl get pods -n sa-p9
+El restore se realizó en un namespace temporal para no sobrescribir la
+aplicación activa. Los cinco PodVolumeRestore terminaron correctamente y los
+PVC restaurados quedaron en estado Bound.
 
-![alt text](image-6.png)
+La consulta se realizó en <code>auth_db</code>, tabla <code>usuarios</code>:
 
-comando : kubectl get pvc -n sa-p9
+    SELECT id_usuario, nombre, apellido, correo, activo
+    FROM usuarios;
 
-![alt text](image-7.png)
+Registro verificado:
 
-Comando :kubectl get pods -n sa-p9 | grep auth
+    11111111-1111-1111-1111-111111111111 | Paula | Bibliotecaria
+    | paula.p9.202300582@biblioteca.local | t
 
-![alt text](image-8.png)
+## Explicación de las capturas y comandos
 
-Comando: kubectl get statefulset -n sa-p9
+### image.png - Rollout saludable
 
-![alt text](image-9.png)
+Comando: <code>kubectl describe rollout api-gateway -n sa-p9</code>.
+Demuestra que el Rollout terminó en fase Healthy y tiene sus réplicas
+disponibles.
 
-Comando: kubectl get pods -n velero
+### image-1.png - Rollout desplegado
 
-![alt text](image-10.png)
+Comandos: <code>kubectl get rollout -A</code> y
+<code>kubectl describe rollout api-gateway -n sa-p9</code>.
+Demuestra que el Rollout existe en <code>sa-p9</code> y tiene sus réplicas
+listas. El texto <code>unknown command argo for kubectl</code> corresponde a
+un plugin opcional; conviene recortarlo o repetir la captura sin ese error.
 
+### image-2.png - AnalysisTemplate
+
+Comando: <code>kubectl get analysistemplate -n sa-p9</code>.
+Demuestra que <code>gateway-integration</code> está creado.
+
+### image-3.png - Configuración del análisis
+
+Comando: <code>kubectl describe analysistemplate gateway-integration -n sa-p9</code>.
+Demuestra tres métricas, límite de fallo uno y consultas a los endpoints de
+autenticación, catálogo, préstamos y multas.
+
+### image-4.png - ReplicaSets
+
+Comando: <code>kubectl get rs -n sa-p9</code>.
+Demuestra las réplicas deseadas, actuales y listas de cada servicio.
+
+### image-5.png - Imágenes desplegadas
+
+Comando: <code>kubectl get rs -n sa-p9 -o wide</code>.
+Muestra las imágenes utilizadas y los selectores de cada ReplicaSet.
+
+### image-6.png - Pods de la plataforma
+
+Comando: <code>kubectl get pods -n sa-p9</code>.
+Demuestra que los microservicios, PostgreSQL y RabbitMQ están Running y que los
+CronJobs terminan en Completed.
+
+### image-7.png - PVC
+
+Comando: <code>kubectl get pvc -n sa-p9</code>.
+Demuestra que los PVC de PostgreSQL y RabbitMQ están Bound, con 2 GiB y la
+clase <code>standard-rwo</code>.
+
+### image-8.png - PostgreSQL
+
+Comando: <code>kubectl get pods -n sa-p9 | grep auth</code>.
+Confirma que <code>auth-postgresql-0</code> está Running. Una captura más limpia
+puede usar <code>kubectl get pod auth-postgresql-0 -n sa-p9</code>.
+
+### image-9.png - StatefulSets
+
+Comando: <code>kubectl get statefulset -n sa-p9</code>.
+Demuestra que PostgreSQL y RabbitMQ tienen una réplica lista.
+
+### image-10.png - Velero
+
+Comando: <code>kubectl get pods -n velero</code>.
+Es la evidencia principal de que Velero está instalado dentro del clúster:
+aparecen el servidor, los node-agents y los jobs de mantenimiento.
+
+## Comandos finales para evidencias
+
+    gcloud container node-pools list \
+      --cluster p9-202300582 \
+      --zone us-central1-a \
+      --project p8202300582
+
+    kubectl get nodes -L cloud.google.com/gke-nodepool
+
+    kubectl get applications -n argocd \
+      -o custom-columns=NAME:.metadata.name,SYNC:.status.sync.status,HEALTH:.status.health.status
+
+    velero backup-location get
+    velero backup get
+    velero backup describe p9-real-data-20260923115216 --details
+    velero restore get
+    velero restore describe p9-restore-rebuild-20260924012106 --details
+
+## Reconstrucción cronometrada
+
+La reconstrucción fue ejecutada con Terraform. La primera ejecución incluyó
+una pausa intencional porque el servidor fue apagado durante el procedimiento;
+esa pausa debe declararse en el informe y no presentarse como tiempo continuo
+de recuperación.
+
+    Inicio de destrucción:    2026-09-23T18:22:30Z
+    Finalización del clúster: 2026-09-23T18:44:27Z
+    Bootstrap completado:     2026-09-24T00:29:17Z
+
+Después de la reconstrucción, ArgoCD volvió a Synced/Healthy, el
+BackupStorageLocation quedó Available y el backup histórico pudo restaurarse.
+
+## Conclusión
+
+Terraform reconstruye la infraestructura, ArgoCD recupera el estado declarativo
+y Velero restaura los datos persistentes desde un bucket GCS externo al clúster.

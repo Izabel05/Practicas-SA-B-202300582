@@ -1,4 +1,8 @@
-# Evidencias de controles P8
+# Evidencias de controles heredados de P8 para P9
+
+P9 conserva los controles de seguridad y despliegue progresivo de P8. Este
+documento mantiene sus evidencias históricas; las evidencias específicas de
+continuidad, Velero y restauración están descritas en `P9/README.md`.
 
 ## Rechazo de política Kyverno
 
