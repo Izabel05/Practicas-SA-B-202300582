@@ -1,0 +1,12 @@
+{{- if .Values.cronjob1.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cronjob1-script
+  namespace: {{ include "sa-platform.namespace" . }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+data:
+  insert-execution.sh: |
+{{ .Files.Get "files/cronjob1/insert-execution.sh" | indent 4 }}
+{{- end }}

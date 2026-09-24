@@ -33,7 +33,7 @@ resource "kubernetes_namespace_v1" "platform" {
     }
   }
 
-  depends_on = [terraform_data.minikube]
+  depends_on = [terraform_data.minikube, google_container_node_pool.primary]
 }
 
 resource "kubernetes_resource_quota_v1" "platform" {

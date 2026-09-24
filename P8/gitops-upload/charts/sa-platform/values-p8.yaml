@@ -1,0 +1,87 @@
+global:
+  namespace: sa-p8
+  imagePullSecrets:
+    - name: ghcr-pull-secret
+
+externalSecrets:
+  enabled: true
+  secretStoreName: cluster-secret-store
+  refreshInterval: 1h
+
+api-gateway:
+  fullnameOverride: api-gateway
+  # La cuenta se crea y administra con Terraform.
+  serviceAccount:
+    create: false
+    name: api-gateway
+  image:
+    repository: ghcr.io/izabel05/sa-api-gateway
+    tag: "v0.1.0"
+  autoscaling:
+    enabled: false
+  service:
+    type: ClusterIP
+    port: 8080
+  rollout:
+    enabled: true
+    stableService: api-gateway
+    canaryService: api-gateway-canary
+    analysisTemplate: gateway-health
+    steps:
+      - setWeight: 20
+      - pause: {duration: 30s}
+      - analysis: {templates: [{templateName: gateway-health}]}
+      - setWeight: 50
+      - pause: {duration: 30s}
+      - analysis: {templates: [{templateName: gateway-health}]}
+      - setWeight: 80
+      - pause: {duration: 30s}
+      - analysis: {templates: [{templateName: gateway-health}]}
+
+autenticacion-ms:
+  fullnameOverride: autenticacion-ms
+  serviceAccount:
+    create: false
+    name: autenticacion-ms
+  image:
+    repository: ghcr.io/izabel05/sa-autenticacion-ms
+    tag: "v0.1.0"
+  auth:
+    secretName: jwt-credentials
+
+catalogo-ms:
+  fullnameOverride: catalogo-ms
+  serviceAccount:
+    create: false
+    name: catalogo-ms
+  image:
+    repository: ghcr.io/izabel05/sa-catalogo-ms
+    tag: "v0.1.0"
+
+prestamos-ms:
+  fullnameOverride: prestamos-ms
+  serviceAccount:
+    create: false
+    name: prestamos-ms
+  image:
+    repository: ghcr.io/izabel05/sa-prestamos-ms
+    tag: "v0.1.0"
+
+multas-ms:
+  fullnameOverride: multas-ms
+  serviceAccount:
+    create: false
+    name: multas-ms
+  image:
+    repository: ghcr.io/izabel05/sa-multas-ms
+    tag: "v0.1.0"
+
+cronjob2:
+  image:
+    repository: ghcr.io/izabel05/sa-cronjobs-worker
+    tag: "v0.1.0"
+
+summaryConsumer:
+  image:
+    repository: ghcr.io/izabel05/sa-cronjobs-worker
+    tag: "v0.1.0"

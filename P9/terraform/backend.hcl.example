@@ -1,0 +1,4 @@
+# Copiar a backend.hcl y sustituir únicamente los valores del entorno.
+# No subir backend.hcl al repositorio.
+bucket = "REEMPLAZAR_CON_BUCKET_TERRAFORM_P9"
+prefix = "terraform/p9"

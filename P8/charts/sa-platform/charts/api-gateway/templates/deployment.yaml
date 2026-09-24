@@ -19,6 +19,8 @@ spec:
     canary:
       stableService: {{ .Values.rollout.stableService }}
       canaryService: {{ .Values.rollout.canaryService }}
+      maxSurge: {{ default "25%" .Values.rollout.maxSurge | quote }}
+      maxUnavailable: {{ default 0 .Values.rollout.maxUnavailable }}
       steps:
         {{- toYaml .Values.rollout.steps | nindent 8 }}
     {{- else }}
@@ -34,6 +36,7 @@ spec:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        p8-secret-refresh: {{ default "initial" .Values.global.rolloutNonce | quote }}
       labels:
         {{- include "api-gateway.selectorLabels" . | nindent 8 }}
     spec:
@@ -41,7 +44,7 @@ spec:
       automountServiceAccountToken: false
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- with .Values.imagePullSecrets }}
+      {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}

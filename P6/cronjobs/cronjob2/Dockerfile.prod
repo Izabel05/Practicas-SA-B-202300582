@@ -1,4 +1,4 @@
-FROM python:3.13-slim AS dependencies
+FROM python:3.13-slim-bookworm AS dependencies
 
 WORKDIR /build
 COPY requirements.txt ./
@@ -9,13 +9,19 @@ FROM dependencies AS build
 COPY worker.py ./
 RUN python -m py_compile worker.py
 
-FROM python:3.13-slim AS production
+FROM python:3.13-slim-bookworm AS production
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
-RUN groupadd --gid 10001 app && useradd --uid 10001 --gid app --no-create-home app
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --gid 10001 app \
+    && useradd --uid 10001 --gid app --no-create-home app
 WORKDIR /app
 COPY --from=dependencies /install /usr/local
+RUN python -m pip install --no-cache-dir --upgrade "setuptools>=83.0.0" "msgpack>=1.2.1"
 COPY --from=build --chown=10001:10001 /build/worker.py ./worker.py
 
 USER 10001:10001

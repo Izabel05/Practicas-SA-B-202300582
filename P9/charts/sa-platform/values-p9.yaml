@@ -1,0 +1,111 @@
+global:
+  namespace: sa-p9
+  imagePullSecrets:
+    - name: ghcr-pull-secret
+  rolloutNonce: "2026-09-23-p9"
+
+externalSecrets:
+  enabled: true
+  secretStoreName: cluster-secret-store
+  refreshInterval: 1h
+  remoteKeyPrefix: p9
+
+# P9 incorpora una base PostgreSQL dentro de Kubernetes para que Velero pueda
+# respaldar y restaurar un volumen persistente con datos verificables.
+auth-database:
+  enabled: true
+  fullnameOverride: auth-postgresql
+  persistence:
+    size: 2Gi
+    storageClassName: ""
+
+api-gateway:
+  fullnameOverride: api-gateway
+  serviceAccount:
+    create: false
+    name: api-gateway
+  image:
+    repository: ghcr.io/izabel05/sa-api-gateway
+    tag: "v1.2.2"
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 70
+  upstreams:
+    resolver: kube-dns.kube-system.svc.cluster.local
+    autenticacion: autenticacion-ms.sa-p9.svc.cluster.local:8081
+    catalogo: catalogo-ms.sa-p9.svc.cluster.local:8082
+    prestamos: prestamos-ms.sa-p9.svc.cluster.local:8083
+    multas: multas-ms.sa-p9.svc.cluster.local:8084
+  rollout:
+    enabled: true
+    stableService: api-gateway
+    canaryService: api-gateway-canary
+    analysisTemplate: gateway-integration
+    maxSurge: 100%
+    maxUnavailable: 50%
+    steps:
+      - setWeight: 20
+      - pause: {duration: 30s}
+      - analysis: {templates: [{templateName: gateway-integration}]}
+      - setWeight: 50
+      - pause: {duration: 30s}
+      - analysis: {templates: [{templateName: gateway-integration}]}
+      - setWeight: 80
+      - pause: {duration: 30s}
+      - analysis: {templates: [{templateName: gateway-integration}]}
+
+autenticacion-ms:
+  fullnameOverride: autenticacion-ms
+  serviceAccount:
+    create: false
+    name: autenticacion-ms
+  image:
+    repository: ghcr.io/izabel05/sa-autenticacion-ms
+    tag: "v1.2.2"
+  auth:
+    secretName: jwt-credentials
+  database:
+    secretName: auth-postgresql-credentials
+    secretKey: database-url
+
+catalogo-ms:
+  fullnameOverride: catalogo-ms
+  serviceAccount:
+    create: false
+    name: catalogo-ms
+  image:
+    repository: ghcr.io/izabel05/sa-catalogo-ms
+    tag: "v1.2.2"
+
+prestamos-ms:
+  fullnameOverride: prestamos-ms
+  serviceAccount:
+    create: false
+    name: prestamos-ms
+  image:
+    repository: ghcr.io/izabel05/sa-prestamos-ms
+    tag: "v1.2.2"
+  dependencies:
+    catalogUrl: http://catalogo-ms.sa-p9.svc.cluster.local:8082
+
+multas-ms:
+  fullnameOverride: multas-ms
+  serviceAccount:
+    create: false
+    name: multas-ms
+  image:
+    repository: ghcr.io/izabel05/sa-multas-ms
+    tag: "v1.2.2"
+
+cronjob2:
+  concurrencyPolicy: Forbid
+  image:
+    repository: ghcr.io/izabel05/sa-cronjobs-worker
+    tag: "v1.2.2"
+
+summaryConsumer:
+  image:
+    repository: ghcr.io/izabel05/sa-cronjobs-worker
+    tag: "v1.2.2"

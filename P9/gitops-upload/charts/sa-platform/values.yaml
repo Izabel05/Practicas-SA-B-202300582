@@ -1,0 +1,124 @@
+global:
+  namespace: sa-p9
+
+# En P6 PostgreSQL se consume desde Neon. Estos subcharts permanecen
+# disponibles para desarrollo local, pero no se despliegan en GKE.
+auth-database:
+  enabled: false
+  fullnameOverride: auth-postgresql
+catalog-database:
+  enabled: false
+  fullnameOverride: catalog-postgresql
+loans-database:
+  enabled: false
+  fullnameOverride: loans-postgresql
+fines-database:
+  enabled: false
+  fullnameOverride: fines-postgresql
+cronjobs-database:
+  enabled: false
+  fullnameOverride: cronjobs-postgresql
+
+cronjob1:
+  enabled: true
+  schedule: "*/2 * * * *"
+  timeZone: America/Guatemala
+  studentId: "202300582"
+  image: {repository: postgres, tag: "17-alpine", pullPolicy: IfNotPresent}
+  database: {secretName: cronjobs-postgresql-credentials, secretKey: database-url}
+  concurrencyPolicy: Forbid
+  backoffLimit: 3
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  resources:
+    requests: {cpu: 25m, memory: 32Mi}
+    limits: {cpu: 150m, memory: 128Mi}
+
+cronjob2:
+  enabled: true
+  schedule: "*/10 * * * *"
+  timeZone: America/Guatemala
+  image: {repository: ghcr.io/izabel05/sa-cronjobs-worker, tag: "v1.2.2", pullPolicy: IfNotPresent}
+  database: {secretName: cronjobs-postgresql-credentials, secretKey: database-url}
+  rabbitmq: {secretName: rabbitmq-credentials, secretKey: amqp-url, queue: resumen.ejecuciones}
+  concurrencyPolicy: Forbid
+  backoffLimit: 3
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  resources:
+    requests: {cpu: 25m, memory: 48Mi}
+    limits: {cpu: 200m, memory: 128Mi}
+
+summaryConsumer:
+  enabled: true
+  replicaCount: 1
+  image: {repository: ghcr.io/izabel05/sa-cronjobs-worker, tag: "v1.2.2", pullPolicy: IfNotPresent}
+  database: {secretName: cronjobs-postgresql-credentials, secretKey: database-url}
+  rabbitmq: {secretName: rabbitmq-credentials, secretKey: amqp-url, queue: resumen.ejecuciones}
+  resources:
+    requests: {cpu: 25m, memory: 48Mi}
+    limits: {cpu: 200m, memory: 128Mi}
+
+networkPolicies:
+  enabled: true
+  ingressControllerNamespace: ingress-nginx
+  externalDatabase:
+    enabled: true
+    cidr: 0.0.0.0/0
+  publicGateway:
+    enabled: true
+    allowedCidrs: [0.0.0.0/0]
+
+ingress:
+  enabled: false
+  className: nginx
+  host: biblioteca.local
+  annotations: {}
+  serviceName: api-gateway
+  servicePort: 8080
+
+api-gateway:
+  fullnameOverride: api-gateway
+  upstreams:
+    resolver: kube-dns.kube-system.svc.cluster.local
+    autenticacion: autenticacion-ms.sa-p9.svc.cluster.local:8081
+    catalogo: catalogo-ms.sa-p9.svc.cluster.local:8082
+    prestamos: prestamos-ms.sa-p9.svc.cluster.local:8083
+    multas: multas-ms.sa-p9.svc.cluster.local:8084
+
+autenticacion-ms:
+  fullnameOverride: autenticacion-ms
+  database:
+    secretName: auth-postgresql-credentials
+    secretKey: database-url
+
+catalogo-ms:
+  fullnameOverride: catalogo-ms
+  database:
+    secretName: catalog-postgresql-credentials
+    secretKey: database-url
+
+prestamos-ms:
+  fullnameOverride: prestamos-ms
+  database:
+    secretName: loans-postgresql-credentials
+    secretKey: database-url
+  dependencies:
+    catalogUrl: http://catalogo-ms.sa-p9.svc.cluster.local:8082
+  rabbitmq:
+    secretName: rabbitmq-credentials
+    secretKey: amqp-url
+    queue: multa.requerida
+
+rabbitmq:
+  fullnameOverride: rabbitmq
+
+multas-ms:
+  fullnameOverride: multas-ms
+  database:
+    secretName: fines-postgresql-credentials
+    secretKey: database-url
+  rabbitmq:
+    secretName: rabbitmq-credentials
+    secretKey: amqp-url
+    queue: multa.requerida

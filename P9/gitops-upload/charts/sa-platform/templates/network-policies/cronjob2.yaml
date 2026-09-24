@@ -1,0 +1,35 @@
+{{- if and .Values.networkPolicies.enabled .Values.cronjob2.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: cronjob2-and-consumer-egress, namespace: {{ include "sa-platform.namespace" . }}}
+spec:
+  podSelector:
+    matchExpressions:
+      - {key: app.kubernetes.io/name, operator: In, values: [cronjob2, summary-consumer]}
+      - {key: app.kubernetes.io/instance, operator: In, values: [{{ .Release.Name }}]}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: cronjobs-database, app.kubernetes.io/instance: {{ .Release.Name }}}
+      ports: [{protocol: TCP, port: 5432}]
+    - to:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: rabbitmq, app.kubernetes.io/instance: {{ .Release.Name }}}
+      ports: [{protocol: TCP, port: 5672}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: cronjobs-workers-database-access, namespace: {{ include "sa-platform.namespace" . }}}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: cronjobs-database, app.kubernetes.io/instance: {{ .Release.Name }}}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - {key: app.kubernetes.io/name, operator: In, values: [cronjob2, summary-consumer]}
+              - {key: app.kubernetes.io/instance, operator: In, values: [{{ .Release.Name }}]}
+      ports: [{protocol: TCP, port: 5432}]
+{{- end }}

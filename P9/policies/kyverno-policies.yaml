@@ -1,0 +1,76 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: p8-disallow-latest
+  annotations:
+    policies.kyverno.io/title: No usar latest
+    policies.kyverno.io/category: Supply Chain
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: disallow-latest
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      validate:
+        message: Las imagenes deben usar un tag semantico o un digest; latest esta prohibido.
+        pattern:
+          spec:
+            containers:
+              - image: "!*:latest"
+            =(initContainers):
+              - image: "!*:latest"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: p8-require-resources
+  annotations:
+    policies.kyverno.io/title: Requerir recursos
+    policies.kyverno.io/category: Reliability
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-resources
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      validate:
+        message: Cada contenedor debe declarar requests y limits de CPU y memoria.
+        foreach:
+          - list: "request.object.spec.containers[]"
+            pattern:
+              resources:
+                requests:
+                  cpu: "?*"
+                  memory: "?*"
+                limits:
+                  cpu: "?*"
+                  memory: "?*"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: p8-require-nonroot
+  annotations:
+    policies.kyverno.io/title: Requerir ejecucion sin root
+    policies.kyverno.io/category: Pod Security
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-run-as-nonroot
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      validate:
+        message: Los Pods deben ejecutarse con runAsNonRoot=true.
+        pattern:
+          spec:
+            securityContext:
+              runAsNonRoot: true

@@ -1,0 +1,49 @@
+global:
+  namespace: sa-p6
+
+ingress:
+  enabled: false
+
+api-gateway:
+  replicaCount: 2
+  image:
+    repository: REGION-docker.pkg.dev/PROJECT_ID/sa-p6/api-gateway
+    tag: "0.1.1"
+    pullPolicy: IfNotPresent
+  service: {type: LoadBalancer, port: 8080}
+  autoscaling: {enabled: true, minReplicas: 2, maxReplicas: 4, targetCPUUtilizationPercentage: 70}
+
+autenticacion-ms:
+  replicaCount: 2
+  image: {repository: REGION-docker.pkg.dev/PROJECT_ID/sa-p6/autenticacion-ms, tag: "0.1.0", pullPolicy: IfNotPresent}
+  database: {secretName: auth-postgresql-credentials, secretKey: database-url}
+  auth: {secretName: jwt-credentials}
+
+catalogo-ms:
+  replicaCount: 2
+  image: {repository: REGION-docker.pkg.dev/PROJECT_ID/sa-p6/catalogo-ms, tag: "0.1.0", pullPolicy: IfNotPresent}
+  database: {secretName: catalog-postgresql-credentials, secretKey: database-url}
+
+prestamos-ms:
+  replicaCount: 2
+  image: {repository: REGION-docker.pkg.dev/PROJECT_ID/sa-p6/prestamos-ms, tag: "0.2.2", pullPolicy: IfNotPresent}
+  database: {secretName: loans-postgresql-credentials, secretKey: database-url}
+
+multas-ms:
+  replicaCount: 2
+  image: {repository: REGION-docker.pkg.dev/PROJECT_ID/sa-p6/multas-ms, tag: "0.1.3", pullPolicy: IfNotPresent}
+  database: {secretName: fines-postgresql-credentials, secretKey: database-url}
+
+cronjob2:
+  image: {repository: REGION-docker.pkg.dev/PROJECT_ID/sa-p6/cronjobs-worker, tag: "0.1.0", pullPolicy: IfNotPresent}
+  database: {secretName: cronjobs-postgresql-credentials, secretKey: database-url}
+
+summaryConsumer:
+  image: {repository: REGION-docker.pkg.dev/PROJECT_ID/sa-p6/cronjobs-worker, tag: "0.1.0", pullPolicy: IfNotPresent}
+  database: {secretName: cronjobs-postgresql-credentials, secretKey: database-url}
+
+rabbitmq:
+  persistence:
+    size: 2Gi
+    # Vacío usa la StorageClass predeterminada de GKE.
+    storageClassName: ""

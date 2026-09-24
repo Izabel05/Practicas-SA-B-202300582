@@ -1,0 +1,65 @@
+replicaCount: 2
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/izabel05/sa-catalogo-ms
+  tag: "v1.2.2"
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: ""
+
+service:
+  type: ClusterIP
+  port: 8082
+
+config:
+  logLevel: info
+
+database:
+  secretName: catalog-postgresql-credentials
+  secretKey: database-url
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 128Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+probes:
+  startup:
+    failureThreshold: 30
+    periodSeconds: 2
+  readiness:
+    initialDelaySeconds: 2
+    periodSeconds: 5
+  liveness:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 100
+  runAsGroup: 100
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL

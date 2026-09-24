@@ -1,0 +1,21 @@
+fullnameOverride: ""
+image:
+  repository: postgres
+  tag: "17-alpine"
+  pullPolicy: IfNotPresent
+auth:
+  username: loans_user
+  password: ""
+  database: loans_db
+service:
+  port: 5432
+persistence:
+  size: 2Gi
+  storageClassName: ""
+resources:
+  requests: {cpu: 50m, memory: 128Mi}
+  limits: {cpu: 300m, memory: 256Mi}
+probes:
+  startup: {failureThreshold: 30, periodSeconds: 2}
+  readiness: {periodSeconds: 5}
+  liveness: {periodSeconds: 10}

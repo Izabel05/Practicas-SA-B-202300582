@@ -1,0 +1,57 @@
+{{- if .Values.networkPolicies.enabled }}
+{{- $namespace := include "sa-platform.namespace" . -}}
+{{- $release := .Release.Name -}}
+{{- $services := list
+  (dict "name" "autenticacion-ms" "port" 8081)
+  (dict "name" "prestamos-ms" "port" 8083)
+  (dict "name" "multas-ms" "port" 8084)
+-}}
+{{- range $index, $service := $services }}
+{{- if $index }}
+---
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $service.name }}-ingress
+  namespace: {{ $namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $service.name }}
+      app.kubernetes.io/instance: {{ $release }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: api-gateway
+              app.kubernetes.io/instance: {{ $release }}
+      ports:
+        - {protocol: TCP, port: {{ $service.port }}}
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: catalogo-ms-ingress
+  namespace: {{ $namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: catalogo-ms
+      app.kubernetes.io/instance: {{ $release }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: [api-gateway, prestamos-ms]
+              - key: app.kubernetes.io/instance
+                operator: In
+                values: [{{ $release }}]
+      ports:
+        - {protocol: TCP, port: 8082}
+{{- end }}

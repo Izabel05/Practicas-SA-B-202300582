@@ -1,0 +1,9 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: {name: {{ include "multas-ms.fullname" . }}, namespace: {{ include "multas-ms.namespace" . }}}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels: {{- include "multas-ms.selectorLabels" . | nindent 6 }}
+{{- end }}

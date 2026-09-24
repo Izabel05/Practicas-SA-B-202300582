@@ -1,0 +1,14 @@
+manage_gke = true
+
+gcp_project_id = "p8202300582"
+gcp_region     = "us-central1"
+gke_location   = "us-central1-a"
+gke_cluster_name = "p9-202300582"
+gke_network_name = "p8-202300582-vpc"
+gke_subnetwork_name = "p8-202300582-subnet"
+
+# Un ambiente por ejecución/estado; el canary no usa otro namespace.
+namespace = "sa-p9"
+
+velero_bucket_name     = "p9-velero-backups-202300582"
+velero_bucket_location = "US-CENTRAL1"

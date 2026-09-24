@@ -6,12 +6,6 @@ on:
     branches: [main]
     tags: ["v*"]
   workflow_dispatch:
-    inputs:
-      deploy:
-        description: "Desplegar en el cluster de GKE despues de publicar las imagenes"
-        required: true
-        default: false
-        type: boolean
 
 concurrency:
   group: p7-${{ github.workflow }}-${{ github.ref }}
@@ -19,11 +13,6 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  GCP_PROJECT_ID: p6202300582
-  GKE_CLUSTER: sa-p6-cluster
-  GKE_LOCATION: us-central1-a
-  K8S_NAMESPACE: sa-p6
-  HELM_RELEASE: sa-platform
 
 jobs:
   prepare:
@@ -211,113 +200,3 @@ jobs:
           labels: ${{ steps.metadata.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
-
-  deploy-gke:
-    name: 4 - Despliegue GKE con Helm
-    needs: [prepare, build-publish]
-    if: >-
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
-      (github.event_name == 'workflow_dispatch' && inputs.deploy == true)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-      packages: read
-    steps:
-      - uses: actions/checkout@v7
-      - name: Mostrar version a desplegar
-        run: echo "Desplegando ${{ needs.prepare.outputs.version }}"
-      - name: Autenticar con Google Cloud
-        uses: google-github-actions/auth@v3
-        with:
-          project_id: ${{ env.GCP_PROJECT_ID }}
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-      - uses: google-github-actions/setup-gcloud@v3
-      - name: Obtener credenciales de GKE
-        uses: google-github-actions/get-gke-credentials@v3
-        with:
-          cluster_name: ${{ env.GKE_CLUSTER }}
-          location: ${{ env.GKE_LOCATION }}
-          project_id: ${{ env.GCP_PROJECT_ID }}
-      - name: Verificar secretos requeridos
-        shell: bash
-        run: |
-          required_secrets=(auth-postgresql-credentials catalog-postgresql-credentials loans-postgresql-credentials fines-postgresql-credentials cronjobs-postgresql-credentials jwt-credentials)
-          for secret_name in "${required_secrets[@]}"; do
-            kubectl --namespace "$K8S_NAMESPACE" get secret "$secret_name" >/dev/null
-          done
-      - name: Desplegar chart con Helm
-        shell: bash
-        run: |
-          owner="${GITHUB_REPOSITORY_OWNER,,}"
-          registry="$REGISTRY/$owner"
-          dns_ip="$(kubectl --namespace kube-system get service kube-dns -o jsonpath='{.spec.clusterIP}')"
-          helm dependency build P6/charts/sa-platform
-          helm upgrade --install "$HELM_RELEASE" P6/charts/sa-platform \
-            --namespace "$K8S_NAMESPACE" --create-namespace \
-            --values P6/charts/sa-platform/values-gke.yaml \
-            --set-string "api-gateway.image.repository=$registry/sa-api-gateway" \
-            --set-string "api-gateway.image.tag=$GITHUB_SHA" \
-            --set-string "api-gateway.upstreams.resolver=$dns_ip" \
-            --set-string "autenticacion-ms.image.repository=$registry/sa-autenticacion-ms" \
-            --set-string "autenticacion-ms.image.tag=$GITHUB_SHA" \
-            --set-string "catalogo-ms.image.repository=$registry/sa-catalogo-ms" \
-            --set-string "catalogo-ms.image.tag=$GITHUB_SHA" \
-            --set-string "prestamos-ms.image.repository=$registry/sa-prestamos-ms" \
-            --set-string "prestamos-ms.image.tag=$GITHUB_SHA" \
-            --set-string "multas-ms.image.repository=$registry/sa-multas-ms" \
-            --set-string "multas-ms.image.tag=$GITHUB_SHA" \
-            --set-string "cronjob2.image.repository=$registry/sa-cronjobs-worker" \
-            --set-string "cronjob2.image.tag=$GITHUB_SHA" \
-            --set-string "summaryConsumer.image.repository=$registry/sa-cronjobs-worker" \
-            --set-string "summaryConsumer.image.tag=$GITHUB_SHA" \
-            --wait --timeout 10m
-      - name: Verificar rollouts
-        shell: bash
-        run: |
-          deployments=(api-gateway autenticacion-ms catalogo-ms prestamos-ms multas-ms summary-consumer)
-          kubectl --namespace "$K8S_NAMESPACE" get pods,services,cronjobs
-          for deployment_name in "${deployments[@]}"; do
-            kubectl --namespace "$K8S_NAMESPACE" rollout status "deployment/$deployment_name" --timeout=5m
-          done
-
-  smoke-gke:
-    name: 5 - Smoke tests GKE
-    needs: deploy-gke
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Autenticar con Google Cloud
-        uses: google-github-actions/auth@v3
-        with:
-          project_id: ${{ env.GCP_PROJECT_ID }}
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-      - name: Obtener credenciales de GKE
-        uses: google-github-actions/get-gke-credentials@v3
-        with:
-          cluster_name: ${{ env.GKE_CLUSTER }}
-          location: ${{ env.GKE_LOCATION }}
-          project_id: ${{ env.GCP_PROJECT_ID }}
-      - name: Esperar IP publica y comprobar servicios
-        shell: bash
-        run: |
-          gateway_ip=""
-          for attempt in {1..30}; do
-            gateway_ip="$(kubectl --namespace "$K8S_NAMESPACE" get service api-gateway -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
-            [[ -n "$gateway_ip" ]] && break
-            echo "Esperando IP publica del API Gateway ($attempt/30)"
-            sleep 10
-          done
-          [[ -n "$gateway_ip" ]] || { echo "El API Gateway no obtuvo una IP publica" >&2; exit 1; }
-          gateway_port="$(kubectl --namespace "$K8S_NAMESPACE" get service api-gateway -o jsonpath='{.spec.ports[0].port}')"
-          endpoints=(/health /health/auth /health/catalogo /health/prestamos /health/multas)
-          for endpoint in "${endpoints[@]}"; do
-            curl --fail --show-error --retry 20 --retry-all-errors --retry-delay 5 \
-              --connect-timeout 5 --max-time 15 \
-              "http://$gateway_ip:$gateway_port$endpoint"
-            echo
-          done

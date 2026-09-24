@@ -1,0 +1,79 @@
+{{- if and .Values.networkPolicies.enabled (not .Values.networkPolicies.externalDatabase.enabled) }}
+{{- $namespace := include "sa-platform.namespace" . -}}
+{{- $release := .Release.Name -}}
+{{- $mappings := list
+  (dict "client" "autenticacion-ms" "server" "auth-database" "policy" "auth-postgresql")
+  (dict "client" "catalogo-ms" "server" "catalog-database" "policy" "catalog-postgresql")
+  (dict "client" "prestamos-ms" "server" "loans-database" "policy" "loans-postgresql")
+  (dict "client" "multas-ms" "server" "fines-database" "policy" "fines-postgresql")
+  (dict "client" "cronjob1" "server" "cronjobs-database" "policy" "cronjobs-postgresql")
+-}}
+{{- range $index, $mapping := $mappings }}
+{{ if $index }}---
+{{ end }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $mapping.policy }}-access
+  namespace: {{ $namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $mapping.server }}
+      app.kubernetes.io/instance: {{ $release }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ $mapping.client }}
+              app.kubernetes.io/instance: {{ $release }}
+      ports:
+        - {protocol: TCP, port: 5432}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $mapping.client }}-database-egress
+  namespace: {{ $namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $mapping.client }}
+      app.kubernetes.io/instance: {{ $release }}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ $mapping.server }}
+              app.kubernetes.io/instance: {{ $release }}
+      ports:
+        - {protocol: TCP, port: 5432}
+{{ if not (eq (add1 $index) (len $mappings)) }}---
+{{ end }}
+{{- end }}
+{{- end }}
+{{- if and .Values.networkPolicies.enabled .Values.networkPolicies.externalDatabase.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: neon-postgresql-egress
+  namespace: {{ include "sa-platform.namespace" . }}
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values: [autenticacion-ms, catalogo-ms, prestamos-ms, multas-ms, cronjob1, cronjob2, summary-consumer]
+      - key: app.kubernetes.io/instance
+        operator: In
+        values: [{{ .Release.Name }}]
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: {{ .Values.networkPolicies.externalDatabase.cidr | quote }}
+      ports:
+        - {protocol: TCP, port: 5432}
+{{- end }}

@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "auth-database.fullname" . }}
+  namespace: {{ include "auth-database.namespace" . }}
+  labels:
+    {{- include "auth-database.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    {{- include "auth-database.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: postgresql
+      port: {{ .Values.service.port }}
+      targetPort: postgresql
+      protocol: TCP
+

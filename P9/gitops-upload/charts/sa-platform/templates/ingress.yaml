@@ -1,0 +1,29 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "sa-platform.fullname" . }}
+  namespace: {{ include "sa-platform.namespace" . }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- range $key, $value := . }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
+spec:
+  ingressClassName: {{ default "nginx" .Values.ingress.className | quote }}
+  rules:
+    - host: {{ required "ingress.host es obligatorio" .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ required "ingress.serviceName es obligatorio" .Values.ingress.serviceName }}
+                port:
+                  number: {{ .Values.ingress.servicePort }}
+{{- end }}
+

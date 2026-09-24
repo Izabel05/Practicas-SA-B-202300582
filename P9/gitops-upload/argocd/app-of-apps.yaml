@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sa-platform-p9-root
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: sa-platform-p9
+    app.kubernetes.io/managed-by: gitops
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Izabel05/GItOps_202300582.git
+    targetRevision: main
+    path: argocd/applications
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

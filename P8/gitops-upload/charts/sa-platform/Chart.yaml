@@ -1,0 +1,35 @@
+apiVersion: v2
+name: sa-platform
+description: Chart GitOps de la plataforma de biblioteca digital para la Practica 8
+type: application
+version: 0.4.0
+appVersion: "0.1.0"
+
+dependencies:
+  - name: auth-database
+    version: 0.1.0
+    condition: auth-database.enabled
+  - name: catalog-database
+    version: 0.1.0
+    condition: catalog-database.enabled
+  - name: loans-database
+    version: 0.1.0
+    condition: loans-database.enabled
+  - name: fines-database
+    version: 0.1.0
+    condition: fines-database.enabled
+  - name: cronjobs-database
+    version: 0.1.0
+    condition: cronjobs-database.enabled
+  - name: rabbitmq
+    version: 0.1.0
+  - name: api-gateway
+    version: 0.1.0
+  - name: autenticacion-ms
+    version: 0.1.0
+  - name: catalogo-ms
+    version: 0.1.0
+  - name: prestamos-ms
+    version: 0.1.0
+  - name: multas-ms
+    version: 0.1.0

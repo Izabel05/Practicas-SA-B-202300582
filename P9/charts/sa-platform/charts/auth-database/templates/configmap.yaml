@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "auth-database.fullname" . }}-init
+  namespace: {{ include "auth-database.namespace" . }}
+  labels:
+    {{- include "auth-database.labels" . | nindent 4 }}
+data:
+  001_init.sql: |
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+    CREATE TABLE IF NOT EXISTS roles (
+        id_rol INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        nombre VARCHAR(50) NOT NULL UNIQUE,
+        descripcion VARCHAR(255),
+        fecha_creacion TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS usuarios (
+        id_usuario UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        nombre VARCHAR(50) NOT NULL,
+        apellido VARCHAR(100) NOT NULL,
+        correo VARCHAR(150) NOT NULL UNIQUE,
+        password_hash VARCHAR(255) NOT NULL,
+        id_rol INTEGER NOT NULL REFERENCES roles(id_rol) ON DELETE RESTRICT,
+        activo BOOLEAN NOT NULL DEFAULT TRUE,
+        fecha_creacion TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        actualizado_en TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_usuarios_id_rol ON usuarios(id_rol);
+
+    INSERT INTO roles (nombre, descripcion)
+    VALUES
+        ('ADMIN', 'Administrador de la biblioteca'),
+        ('LECTOR', 'Usuario que solicita prestamos')
+    ON CONFLICT (nombre) DO NOTHING;
+

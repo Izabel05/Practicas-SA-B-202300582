@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sa-platform-p9
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: sa-platform-p9
+    app.kubernetes.io/managed-by: gitops
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Izabel05/GItOps_202300582.git
+    targetRevision: main
+    path: charts/sa-platform
+    helm:
+      valueFiles:
+        - values-p9.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sa-p9
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

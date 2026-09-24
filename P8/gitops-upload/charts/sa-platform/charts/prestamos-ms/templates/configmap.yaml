@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "prestamos-ms.fullname" . }}
+  namespace: {{ include "prestamos-ms.namespace" . }}
+  labels: {{- include "prestamos-ms.labels" . | nindent 4 }}
+data:
+  PORT: {{ .Values.service.port | quote }}
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  CATALOG_URL: {{ required "dependencies.catalogUrl es obligatorio" .Values.dependencies.catalogUrl | quote }}
+  FINE_QUEUE: {{ .Values.rabbitmq.queue | quote }}
