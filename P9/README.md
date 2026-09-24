@@ -146,3 +146,47 @@ deben agregarse a la tabla de enlaces antes de la entrega.
 
 Debe completarse en una página con exactamente cinco campos. La plantilla está
 en `docs/informe-incidente.md`.
+
+comando : kubectl describe rollout api-gateway -n sa-p9
+
+![alt text](image-1.png)
+
+![alt text](image.png)
+
+comando : kubectl get analysistemplate -n sa-p9
+
+![alt text](image-2.png)
+
+comando : kubectl describe analysistemplate gateway-integration -n sa-p9
+
+
+![alt text](image-3.png)
+
+comando : kubectl get rs -n sa-p9
+
+![alt text](image-4.png)
+
+Comando: kubectl get rs -n sa-p9 -o wide
+
+![alt text](image-5.png)
+
+Comando : kubectl get pods -n sa-p9
+
+![alt text](image-6.png)
+
+comando : kubectl get pvc -n sa-p9
+
+![alt text](image-7.png)
+
+Comando :kubectl get pods -n sa-p9 | grep auth
+
+![alt text](image-8.png)
+
+Comando: kubectl get statefulset -n sa-p9
+
+![alt text](image-9.png)
+
+Comando: kubectl get pods -n velero
+
+![alt text](image-10.png)
+
