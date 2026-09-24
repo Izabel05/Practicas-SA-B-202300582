@@ -150,6 +150,8 @@ Restore posterior a la reconstrucción:
 
 ![Detalle de la restauración](image-12.png)
 
+## Restauración de datos
+
 El restore se realizó en un namespace temporal para no sobrescribir la
 aplicación activa. Los cinco PodVolumeRestore terminaron correctamente y los
 PVC restaurados quedaron en estado Bound.
@@ -164,15 +166,21 @@ La consulta se realizó en <code>auth_db</code>, tabla <code>usuarios</code>:
     11111111-1111-1111-1111-111111111111 | Paula | Bibliotecaria
     | paula.p9.202300582@biblioteca.local | t
 
+![Datos reales recuperados desde el restore](image-19.png)
+
 ## Explicación de las capturas y comandos
 
-### image.png - Rollout saludable
+### Rollout saludable
+
+![Rollout saludable](image.png)
 
 Comando: <code>kubectl describe rollout api-gateway -n sa-p9</code>.
 Demuestra que el Rollout terminó en fase Healthy y tiene sus réplicas
 disponibles.
 
-### image-1.png - Rollout desplegado
+### Rollout desplegado
+
+![Rollout desplegado](image-1.png)
 
 Comandos: <code>kubectl get rollout -A</code> y
 <code>kubectl describe rollout api-gateway -n sa-p9</code>.
@@ -180,51 +188,69 @@ Demuestra que el Rollout existe en <code>sa-p9</code> y tiene sus réplicas
 listas. El texto <code>unknown command argo for kubectl</code> corresponde a
 un plugin opcional; conviene recortarlo o repetir la captura sin ese error.
 
-### image-2.png - AnalysisTemplate
+### AnalysisTemplate
+
+![AnalysisTemplate](image-2.png)
 
 Comando: <code>kubectl get analysistemplate -n sa-p9</code>.
 Demuestra que <code>gateway-integration</code> está creado.
 
-### image-3.png - Configuración del análisis
+### Configuración del análisis
+
+![Configuración del análisis](image-3.png)
 
 Comando: <code>kubectl describe analysistemplate gateway-integration -n sa-p9</code>.
 Demuestra tres métricas, límite de fallo uno y consultas a los endpoints de
 autenticación, catálogo, préstamos y multas.
 
-### image-4.png - ReplicaSets
+### ReplicaSets
+
+![ReplicaSets](image-4.png)
 
 Comando: <code>kubectl get rs -n sa-p9</code>.
 Demuestra las réplicas deseadas, actuales y listas de cada servicio.
 
-### image-5.png - Imágenes desplegadas
+### Imágenes desplegadas
+
+![Imágenes desplegadas](image-5.png)
 
 Comando: <code>kubectl get rs -n sa-p9 -o wide</code>.
 Muestra las imágenes utilizadas y los selectores de cada ReplicaSet.
 
-### image-6.png - Pods de la plataforma
+### Pods de la plataforma
+
+![Pods de la plataforma](image-6.png)
 
 Comando: <code>kubectl get pods -n sa-p9</code>.
 Demuestra que los microservicios, PostgreSQL y RabbitMQ están Running y que los
 CronJobs terminan en Completed.
 
-### image-7.png - PVC
+### PVC
+
+![PVC](image-7.png)
 
 Comando: <code>kubectl get pvc -n sa-p9</code>.
 Demuestra que los PVC de PostgreSQL y RabbitMQ están Bound, con 2 GiB y la
 clase <code>standard-rwo</code>.
 
-### image-8.png - PostgreSQL
+### PostgreSQL
+
+![PostgreSQL](image-8.png)
 
 Comando: <code>kubectl get pods -n sa-p9 | grep auth</code>.
 Confirma que <code>auth-postgresql-0</code> está Running. Una captura más limpia
 puede usar <code>kubectl get pod auth-postgresql-0 -n sa-p9</code>.
 
-### image-9.png - StatefulSets
+### StatefulSets
+
+![StatefulSets](image-9.png)
 
 Comando: <code>kubectl get statefulset -n sa-p9</code>.
 Demuestra que PostgreSQL y RabbitMQ tienen una réplica lista.
 
-### image-10.png - Velero
+### Velero
+
+![Velero](image-10.png)
 
 Comando: <code>kubectl get pods -n velero</code>.
 Es la evidencia principal de que Velero está instalado dentro del clúster:
