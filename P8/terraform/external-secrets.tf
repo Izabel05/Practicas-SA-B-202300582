@@ -44,17 +44,17 @@ resource "kubernetes_manifest" "cluster_secret_store" {
         gcpsm = {
           projectID = var.gcp_project_id
           auth = {
-                workloadIdentity = {
-                  serviceAccountRef = {
-                    name             = kubernetes_service_account_v1.external_secrets_identity.metadata[0].name
-                    namespace        = kubernetes_service_account_v1.external_secrets_identity.metadata[0].namespace
-                  }
-                  clusterLocation  = var.gke_location
-                  clusterName      = var.gke_cluster_name
-                  clusterProjectID = var.gcp_project_id
-                }
+            workloadIdentity = {
+              serviceAccountRef = {
+                name      = kubernetes_service_account_v1.external_secrets_identity.metadata[0].name
+                namespace = kubernetes_service_account_v1.external_secrets_identity.metadata[0].namespace
               }
+              clusterLocation  = var.gke_location
+              clusterName      = var.gke_cluster_name
+              clusterProjectID = var.gcp_project_id
             }
+          }
+        }
       }
     }
   }

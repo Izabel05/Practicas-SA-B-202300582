@@ -2,7 +2,6 @@ resource "google_project_service" "container" {
   count   = var.manage_gke ? 1 : 0
   project = var.gcp_project_id
   service = "container.googleapis.com"
-
   disable_on_destroy = false
 }
 
@@ -10,7 +9,6 @@ resource "google_project_service" "compute" {
   count   = var.manage_gke ? 1 : 0
   project = var.gcp_project_id
   service = "compute.googleapis.com"
-
   disable_on_destroy = false
 }
 
@@ -19,7 +17,6 @@ resource "google_compute_network" "gke" {
   project                 = var.gcp_project_id
   name                    = var.gke_network_name
   auto_create_subnetworks = false
-
   depends_on = [google_project_service.compute]
 }
 

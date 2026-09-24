@@ -13,6 +13,7 @@ p8-disallow-latest: latest esta prohibido
 p8-require-nonroot: runAsNonRoot=true es obligatorio
 ```
 
+![Rechazo politica](image.png)
 ## Bloqueo de vulnerabilidad crítica
 
 El PR de evidencia [#4](https://github.com/Izabel05/Practicas-SA-B-202300582/pull/4)
@@ -22,6 +23,7 @@ el job `api-gateway` falló exactamente en
 `Bloquear vulnerabilidades criticas con Trivy`; las otras cinco imágenes
 terminaron correctamente y el job de promoción GitOps fue omitido.
 
+![alt text](image-1.png)
 ## Rollback automático
 
 El fallo controlado está trazado en los PR GitOps
@@ -31,3 +33,11 @@ El fallo controlado está trazado en los PR GitOps
 `RolloutAborted`, mantuvo estable `7fd7f76d74` y no promovió el canary.
 
 No se ejecutaron pruebas de humo ni pruebas de carga.
+
+![alt text](image-2.png)
+
+![alt text](image-3.png)
+
+![alt text](image-4.png)
+
+![alt text](image-5.png)

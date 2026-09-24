@@ -1,6 +1,10 @@
 global:
   namespace: sa-p6
 
+externalSecrets:
+  enabled: false
+  secretStoreName: cluster-secret-store
+
 # En P6 PostgreSQL se consume desde Neon. Estos subcharts permanecen
 # disponibles para desarrollo local, pero no se despliegan en GKE.
 auth-database:
