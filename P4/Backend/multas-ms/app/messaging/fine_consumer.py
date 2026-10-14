@@ -6,7 +6,11 @@ from datetime import datetime
 from uuid import UUID
 
 import pika
+from opentelemetry import trace
+from opentelemetry.propagate import extract
+from opentelemetry.trace import SpanKind
 
+from app.observability import FINES_CREATED
 from app.service.fine_service import FineService
 
 LOGGER = logging.getLogger(__name__)
@@ -44,17 +48,24 @@ class FineEventConsumer:
         channel.queue_declare(queue=self._queue, durable=True)
         channel.basic_qos(prefetch_count=1)
 
-        def handle(ch, method, _properties, body) -> None:
+        def handle(ch, method, properties, body) -> None:
+            parent_context = extract(properties.headers or {})
             try:
-                event = json.loads(body)
-                generated_at = event.get("fecha_generacion")
-                self._service.create_for_overdue_loan(
-                    UUID(event["id_prestamo"]),
-                    UUID(event["id_usuario"]),
-                    int(event["dias_atraso"]),
-                    datetime.fromisoformat(generated_at) if generated_at else None,
-                )
-                ch.basic_ack(method.delivery_tag)
+                with trace.get_tracer(__name__).start_as_current_span(
+                    "multas.consumir_evento", context=parent_context, kind=SpanKind.CONSUMER
+                ) as span:
+                    event = json.loads(body)
+                    span.set_attribute("library.loan.id", event["id_prestamo"])
+                    generated_at = event.get("fecha_generacion")
+                    self._service.create_for_overdue_loan(
+                        UUID(event["id_prestamo"]),
+                        UUID(event["id_usuario"]),
+                        int(event["dias_atraso"]),
+                        datetime.fromisoformat(generated_at) if generated_at else None,
+                    )
+                    FINES_CREATED.labels("multas-ms").inc()
+                    LOGGER.info("multa creada desde evento", extra={"loan_id": event["id_prestamo"]})
+                    ch.basic_ack(method.delivery_tag)
             except Exception:
                 LOGGER.exception("Evento de multa invalido")
                 ch.basic_nack(method.delivery_tag, requeue=False)

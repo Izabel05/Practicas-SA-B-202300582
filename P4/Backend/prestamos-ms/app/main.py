@@ -6,6 +6,7 @@ from psycopg_pool import ConnectionPool
 from app.clients.catalog_client import HttpCatalogClient
 from app.clients.fine_client import RabbitFineClient
 from app.config.settings import Settings
+from app.observability import configure_observability
 from app.repository.postgres_loan_repository import PostgresLoanRepository
 from app.routes.routes import register_routes
 from app.service.loan_service import LoanService
@@ -42,6 +43,7 @@ def create_app(
             pool.close()
 
     app = FastAPI(title="API de Préstamos", version="1.0.0", lifespan=lifespan)
+    configure_observability(app, "prestamos-ms")
     register_routes(app)
     return app
 

@@ -6,6 +6,7 @@ from psycopg_pool import ConnectionPool
 
 from app.config.settings import Settings
 from app.models.errors import ConflictError, InvalidInputError, NotFoundError
+from app.observability import configure_observability
 from app.messaging.fine_consumer import FineEventConsumer
 from app.repository.postgres_fine_repository import PostgresFineRepository
 from app.routes.routes import register_routes
@@ -44,6 +45,7 @@ def create_app(settings: Settings | None = None, fine_service: FineService | Non
             pool.close()
 
     app = FastAPI(title="API de Multas", version="1.0.0", lifespan=lifespan)
+    configure_observability(app, "multas-ms")
     register_routes(app)
 
     @app.exception_handler(InvalidInputError)

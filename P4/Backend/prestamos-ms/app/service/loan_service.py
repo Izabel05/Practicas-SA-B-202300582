@@ -3,6 +3,7 @@ from uuid import UUID
 
 from app.models.errors import ConflictError, InvalidInputError
 from app.models.loan import Loan, LoanDetail
+from app.observability import LOANS_CREATED
 from app.repository.interfaces import CatalogClient, FineClient, LoanRepository
 
 
@@ -27,7 +28,9 @@ class LoanService:
             for copy_id in copy_ids:
                 self._catalog.update_copy_status(copy_id, "PRESTADO")
                 reserved.append(copy_id)
-            return self._repository.create(user_id, due_date, copy_ids)
+            loan = self._repository.create(user_id, due_date, copy_ids)
+            LOANS_CREATED.labels("prestamos-ms").inc()
+            return loan
         except Exception:
             for copy_id in reserved:
                 try:

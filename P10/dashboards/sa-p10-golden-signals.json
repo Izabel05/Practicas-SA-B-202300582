@@ -1,0 +1,21 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "panels": [
+    {"id": 1, "title": "Traffic - requests/s", "type": "timeseries", "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sum by (service) (rate(library_http_requests_total[5m]))", "legendFormat": "{{service}}"}], "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}},
+    {"id": 2, "title": "Errors - 5xx ratio", "type": "timeseries", "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sum by (service) (rate(library_http_requests_total{status_code=~\"5..\"}[5m])) / sum by (service) (rate(library_http_requests_total[5m]))", "legendFormat": "{{service}}"}], "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}},
+    {"id": 3, "title": "Duration - p95", "type": "timeseries", "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "histogram_quantile(0.95, sum by (le, service) (rate(library_http_request_duration_seconds_bucket[5m])))", "legendFormat": "{{service}}"}], "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}},
+    {"id": 4, "title": "Saturation - CPU", "type": "timeseries", "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"sa-p9\",container!=\"\"}[5m]))", "legendFormat": "{{pod}}"}], "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}},
+    {"id": 5, "title": "Availability error budget consumed", "type": "stat", "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sa:slo_availability:error_budget_consumed"}], "gridPos": {"h": 6, "w": 8, "x": 0, "y": 16}},
+    {"id": 6, "title": "Latency error budget consumed", "type": "stat", "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sa:slo_latency:error_budget_consumed"}], "gridPos": {"h": 6, "w": 8, "x": 8, "y": 16}},
+    {"id": 7, "title": "Business events", "type": "timeseries", "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sum(rate(library_loans_created_total[5m]))", "legendFormat": "loans"}, {"expr": "sum(rate(library_fines_created_total[5m]))", "legendFormat": "fines"}], "gridPos": {"h": 6, "w": 8, "x": 16, "y": 16}},
+    {"id": 8, "title": "Logs correlated by trace", "type": "logs", "datasource": {"type": "loki", "uid": "loki"}, "targets": [{"expr": "{k8s_namespace_name=\"sa-p9\"} | json | trace_id != \"\""}], "gridPos": {"h": 8, "w": 24, "x": 0, "y": 22}}
+  ],
+  "schemaVersion": 41,
+  "tags": ["p10", "slo", "golden-signals"],
+  "templating": {"list": []},
+  "time": {"from": "now-1h", "to": "now"},
+  "title": "SA P10 - Golden Signals, SLO and Telemetry",
+  "uid": "sa-p10-golden-signals",
+  "version": 1
+}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"biblioteca/catalogo-ms/internal/models"
+	"biblioteca/catalogo-ms/internal/observability"
 	"biblioteca/catalogo-ms/internal/repository"
 )
 
@@ -83,7 +84,11 @@ func (s *CatalogService) UpdateCopyStatus(ctx context.Context, id, status string
 	if strings.TrimSpace(id) == "" || !validCopyStatus(status) {
 		return models.Copy{}, models.ErrInvalidInput
 	}
-	return s.repository.UpdateCopyStatus(ctx, id, status)
+	copy, err := s.repository.UpdateCopyStatus(ctx, id, status)
+	if err == nil {
+		observability.CopyStatusChanges.WithLabelValues("catalogo-ms", status).Inc()
+	}
+	return copy, err
 }
 
 func validCopyStatus(status string) bool {

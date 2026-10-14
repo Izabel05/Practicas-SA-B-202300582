@@ -12,6 +12,7 @@ import (
 
 	"biblioteca/catalogo-ms/internal/config"
 	"biblioteca/catalogo-ms/internal/controller"
+	"biblioteca/catalogo-ms/internal/observability"
 	"biblioteca/catalogo-ms/internal/repository"
 	"biblioteca/catalogo-ms/internal/routes"
 	"biblioteca/catalogo-ms/internal/service"
@@ -42,6 +43,12 @@ func configuredLogLevel(value string) slog.Level {
 }
 
 func run(logger *slog.Logger) error {
+	shutdownTracing, err := observability.InitTracing(context.Background(), "catalogo-ms")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = shutdownTracing(context.Background()) }()
+
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -63,7 +70,7 @@ func run(logger *slog.Logger) error {
 	}
 	restController := controller.NewRestController(catalogService)
 	server := &http.Server{
-		Addr: ":" + cfg.Port, Handler: routes.New(graphqlController, restController, logger),
+		Addr: ":" + cfg.Port, Handler: observability.Handler("catalogo-ms", "stable", routes.New(graphqlController, restController, logger)),
 		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second,
 		WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second,
 	}
