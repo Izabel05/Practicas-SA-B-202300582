@@ -19,7 +19,8 @@ Aplicación: namespace `sa-p9` · observabilidad: namespace `observability`
 | Dashboard JSON | [sa-p10-golden-signals.json](dashboards/sa-p10-golden-signals.json) |
 | Flujo de telemetría | [telemetry-flow.md](diagrams/telemetry-flow.md) |
 | Informe operativo | [informe-operativo.md](docs/informe-operativo.md) |
-| Evidencia de GKE y rollback | [evidence](evidence/) |
+| Evidencia de GKE y rollback | [validación final](evidence/validation-2026-10-14.md) |
+| Captura de dashboard | [evidencia API de Grafana](evidence/grafana-dashboard-api-evidence.png) |
 | Video 5–8 minutos | Pendiente de grabación y URL pública por el estudiante |
 
 ## Diseño verificable
