@@ -1,21 +1,494 @@
 {
-  "annotations": {"list": []},
+  "id": null,
+  "annotations": {
+    "list": []
+  },
   "editable": true,
   "panels": [
-    {"id": 1, "title": "Traffic - requests/s", "type": "timeseries", "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sum by (service) (rate(library_http_requests_total[5m]))", "legendFormat": "{{service}}"}], "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}},
-    {"id": 2, "title": "Errors - 5xx ratio", "type": "timeseries", "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sum by (service) (rate(library_http_requests_total{status_code=~\"5..\"}[5m])) / sum by (service) (rate(library_http_requests_total[5m]))", "legendFormat": "{{service}}"}], "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}},
-    {"id": 3, "title": "Duration - p95", "type": "timeseries", "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "histogram_quantile(0.95, sum by (le, service) (rate(library_http_request_duration_seconds_bucket[5m])))", "legendFormat": "{{service}}"}], "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}},
-    {"id": 4, "title": "Saturation - CPU", "type": "timeseries", "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"sa-p9\",container!=\"\"}[5m]))", "legendFormat": "{{pod}}"}], "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}},
-    {"id": 5, "title": "Availability error budget consumed", "type": "stat", "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sa:slo_availability:error_budget_consumed"}], "gridPos": {"h": 6, "w": 8, "x": 0, "y": 16}},
-    {"id": 6, "title": "Latency error budget consumed", "type": "stat", "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sa:slo_latency:error_budget_consumed"}], "gridPos": {"h": 6, "w": 8, "x": 8, "y": 16}},
-    {"id": 7, "title": "Business events", "type": "timeseries", "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sum(rate(library_loans_created_total[5m]))", "legendFormat": "loans"}, {"expr": "sum(rate(library_fines_created_total[5m]))", "legendFormat": "fines"}], "gridPos": {"h": 6, "w": 8, "x": 16, "y": 16}},
-    {"id": 8, "title": "Logs correlated by trace", "type": "logs", "datasource": {"type": "loki", "uid": "loki"}, "targets": [{"expr": "{k8s_namespace_name=\"sa-p9\"} | json | trace_id != \"\""}], "gridPos": {"h": 8, "w": 24, "x": 0, "y": 22}}
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Proporcion de solicitudes del gateway sin HTTP 5xx; objetivo 99.5%.",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "unit": "percentunit",
+          "noValue": "Sin trafico / sin datos"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "1 - (sum(rate(library_http_requests_total{service=\"api-gateway\",status_code=~\"5..\"}[5m])) or vector(0)) / clamp_min(sum(rate(library_http_requests_total{service=\"api-gateway\"}[5m])), 0.001)",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "title": "Disponibilidad - ultima hora",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Percentil 95 de solicitudes al gateway; objetivo menor a 0.75 s.",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "unit": "s",
+          "noValue": "Sin trafico / sin datos"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(library_http_request_duration_seconds_bucket{service=\"api-gateway\"}[5m])))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "title": "Latencia p95",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Fraccion del presupuesto de error de disponibilidad consumida en la ventana movil de cinco minutos.",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "unit": "percentunit",
+          "noValue": "Sin trafico / sin datos"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(rate(library_http_requests_total{service=\"api-gateway\",status_code=~\"5..\"}[5m])) or vector(0)) / clamp_min(sum(rate(library_http_requests_total{service=\"api-gateway\"}[5m])), 0.001) / 0.005",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "title": "Presupuesto disponibilidad consumido",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Solo gateway: es el unico servicio que emite el bucket de 750 ms en esta version.",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "unit": "percentunit",
+          "noValue": "Sin trafico / sin datos"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(1 - sum(rate(library_http_request_duration_seconds_bucket{service=\"api-gateway\",le=\"0.75\"}[5m])) / clamp_min(sum(rate(library_http_request_duration_seconds_count{service=\"api-gateway\"}[5m])), 0.001)) / 0.05",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "title": "Presupuesto latencia gateway consumido",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Peticiones HTTP por segundo para los servicios instrumentados.",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (service) (rate(library_http_requests_total[5m]))",
+          "refId": "A",
+          "legendFormat": "{{service}}"
+        }
+      ],
+      "title": "Trafico - solicitudes por segundo",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Solicitudes 5xx por segundo. Cero se muestra incluso si todavia no existe una serie 5xx.",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (service) (rate(library_http_requests_total{status_code=~\"5..\"}[5m])) or on (service) (sum by (service) (rate(library_http_requests_total[5m])) * 0)",
+          "refId": "A",
+          "legendFormat": "{{service}}"
+        }
+      ],
+      "title": "Errores HTTP 5xx",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Uso de CPU por pod de la aplicacion.",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "unit": "cores"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 11
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"sa-p9\",container!=\"\",container!=\"POD\"}[5m]))",
+          "refId": "A",
+          "legendFormat": "{{pod}}"
+        }
+      ],
+      "title": "Saturacion - CPU por pod",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Memoria activa por pod de la aplicacion.",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 11
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"sa-p9\",container!=\"\",container!=\"POD\"})",
+          "refId": "A",
+          "legendFormat": "{{pod}}"
+        }
+      ],
+      "title": "Saturacion - memoria por pod",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Total observado de prestamos creados; cero indica que aun no se ha observado el evento.",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "unit": "short",
+          "noValue": "Sin trafico / sin datos"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 18
+      },
+      "id": 9,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(library_loans_created_total) or vector(0)",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "title": "Prestamos creados",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Total observado de multas creadas; cero indica que aun no se ha observado el evento.",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "unit": "short",
+          "noValue": "Sin trafico / sin datos"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 18
+      },
+      "id": 10,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(library_fines_created_total) or vector(0)",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "title": "Multas creadas",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "Logs JSON de la aplicacion que contienen trace_id para correlacionar con Tempo.",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "id": 11,
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "{k8s_namespace_name=\"sa-p9\"} | json | trace_id != \"\"",
+          "refId": "A"
+        }
+      ],
+      "title": "Logs correlacionados por trace_id",
+      "type": "logs"
+    }
   ],
+  "refresh": "10s",
   "schemaVersion": 41,
-  "tags": ["p10", "slo", "golden-signals"],
-  "templating": {"list": []},
-  "time": {"from": "now-1h", "to": "now"},
+  "tags": [
+    "p10",
+    "observability",
+    "slo"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
   "title": "SA P10 - Golden Signals, SLO and Telemetry",
   "uid": "sa-p10-golden-signals",
-  "version": 1
+  "version": 2
 }

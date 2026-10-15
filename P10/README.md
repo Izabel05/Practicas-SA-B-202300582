@@ -19,6 +19,7 @@ Aplicación: namespace `sa-p9` · observabilidad: namespace `observability`
 | SLO y PrometheusRule | [observability.yaml](https://github.com/Izabel05/GItOps_202300582/blob/main/charts/sa-platform/templates/observability.yaml) |
 | Runbooks | [Disponibilidad](#runbook-de-disponibilidad) · [latencia](#runbook-de-latencia) |
 | Dashboard JSON | [sa-p10-golden-signals.json](dashboards/sa-p10-golden-signals.json) |
+| Scripts de verificación | [Observabilidad](scripts/verify-observability.sh) · [incidente y rollback](scripts/verify-incident.sh) |
 | Flujo de telemetría | [Diagrama en este README](#arquitectura-y-flujo-de-telemetría) |
 | Informe operativo | [Sección de este README](#informe-operativo) |
 | Evidencia de GKE y rollback | [Validación en este README](#validación-de-telemetría-en-gke) |
@@ -30,6 +31,8 @@ Aplicación: namespace `sa-p9` · observabilidad: namespace `observability`
 La cadena `api-gateway → prestamos-ms → catalogo-ms → RabbitMQ → multas-ms` propaga contexto W3C. Los servicios emiten métricas técnicas de tráfico, errores y latencia; métricas de negocio de préstamos, multas y cambios de estado; trazas OTLP; y logs JSON con `trace_id`/`span_id`.
 
 Prometheus recolecta `/metrics` mediante `ServiceMonitor`. El Collector recoge logs de contenedores y trazas OTLP, enviándolos a Loki y Tempo. El dashboard Grafana reúne las cuatro señales doradas, consumo de presupuesto y métricas de negocio.
+
+El JSON del dashboard sigue la estructura del ejemplo `sa-platform.json`: cuatro indicadores SLO en la primera fila, cuatro gráficas de tráfico/errores/CPU/memoria, dos indicadores de negocio y un panel adicional de logs correlacionados. Incluye `fieldConfig`, unidades, descripciones, posición `gridPos`, `refId`, actualización cada 10 segundos y ventana inicial de 15 minutos. Sus consultas usan las métricas reales `library_*` de P10, no las métricas de pagos del ejemplo.
 
 ## SLO
 
@@ -48,7 +51,7 @@ sum by (service) (rate(library_http_requests_total[5m]))
 histogram_quantile(0.95, sum by (le, service) (rate(library_http_request_duration_seconds_bucket[5m])))
 ```
 
-**Limitación de la versión actual:** la ausencia de respuestas 5xx produce `No data` en el panel de errores y el presupuesto de disponibilidad, en vez de mostrar cero. El tráfico automático a `/health/catalogo` no crea préstamos ni multas, de modo que el panel de negocio puede quedar vacío. La regla de presupuesto de latencia usa el bucket `le="0.75"`, que solo emite el gateway; catálogo, préstamos y multas carecen de él. Un valor como `9.54` no representa correctamente el presupuesto agregado de los cuatro servicios. Se deben alinear los buckets y publicar nuevas imágenes antes de usarlo como evidencia exacta.
+**Limitación de la versión actual:** el JSON nuevo muestra cero en los indicadores de errores 5xx y eventos de negocio cuando no hay series, y calcula el indicador de presupuesto de latencia solo para el gateway. La regla global `sa:slo_latency:error_budget_consumed` todavía usa el bucket `le="0.75"`, que solo emite el gateway; catálogo, préstamos y multas carecen de él. Un valor global previo como `9.54` no representa correctamente el presupuesto de los cuatro servicios. Se deben alinear los buckets y publicar nuevas imágenes antes de usar esa regla global como evidencia exacta.
 
 ## Demostración de reversión
 
@@ -88,6 +91,21 @@ La traza `477f050345123797d0336e160cd657b` consultada en Tempo muestra `api-gate
 | Recuperación GitOps | `6b8d4465cf` | `api-gateway-6b8d4465cf-8-2`, `-5`, `-8` | `Successful`; Rollout `Healthy 2/2` |
 
 La latencia candidata de `1200 ms` se declaró en GitOps (`3d914b7`). El AnalysisRun fallido comenzó a las `2026-10-14T23:43:23Z` y terminó a las `23:43:33Z`. **Síntoma → causa → respuesta:** p95 por encima de 750 ms → latencia candidata declarada en Git → detección y aborto en unos 10 segundos, conservando la versión estable. La recuperación también fue declarativa (`cf30d6c`). El acceso anónimo temporal de inspección se retiró en `1616a6a`.
+
+## Scripts de verificación
+
+Los scripts de `P10/scripts` se ejecutan **en Google Cloud Shell** contra el clúster GKE y son de solo lectura. No crean recursos ni disparan una falla nueva. Terraform no es necesario para consultar una infraestructura ya desplegada.
+
+```bash
+gcloud config set project p8202300582
+gcloud container clusters get-credentials p9-202300582 --zone us-central1-a --project p8202300582
+git clone https://github.com/Izabel05/Practicas-SA-B-202300582.git
+cd Practicas-SA-B-202300582
+bash P10/scripts/verify-observability.sh
+bash P10/scripts/verify-incident.sh
+```
+
+Si el repositorio ya está clonado en Cloud Shell, entra en su carpeta y ejecuta `git pull` antes de los dos comandos `bash`. `verify-observability.sh` comprueba Argo CD, pods, `ServiceMonitor`, `PrometheusRule`, `AnalysisTemplate` y consultas reales a la API de Prometheus mediante un túnel temporal que cierra al terminar. `verify-incident.sh` muestra el Rollout, la plantilla y los AnalysisRun históricos de la falla y la recuperación. Si Kubernetes ya eliminó un AnalysisRun antiguo, el script lo indica sin inventar un resultado.
 
 ## Informe operativo
 
