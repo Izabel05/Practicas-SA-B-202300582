@@ -6,6 +6,11 @@ resource "terraform_data" "p9_bootstrap" {
     bucket  = google_storage_bucket.velero.name
   }
 
+  triggers_replace = {
+    cluster = google_container_cluster.primary[0].id
+    bucket  = google_storage_bucket.velero.name
+  }
+
   provisioner "local-exec" {
     interpreter = ["/bin/bash", "-c"]
     command = templatefile("${path.module}/bootstrap-gke.sh.tftpl", {
