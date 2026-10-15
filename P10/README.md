@@ -20,11 +20,13 @@ Aplicación: namespace `sa-p9` · observabilidad: namespace `observability`
 | Runbooks | [Disponibilidad](#runbook-de-disponibilidad) · [latencia](#runbook-de-latencia) |
 | Dashboard JSON | [sa-p10-golden-signals.json](dashboards/sa-p10-golden-signals.json) |
 | Scripts de verificación | [Observabilidad](scripts/verify-observability.sh) · [incidente y rollback](scripts/verify-incident.sh) |
-| Flujo de telemetría | [Diagrama en este README](#arquitectura-y-flujo-de-telemetría) |
+| Flujo de telemetría | [Diagrama en este README](#arquitectura-y-flujo-de-telemetría) · [imagen](Evidencias/Flujo.png) |
 | Informe operativo | [Sección de este README](#informe-operativo) |
 | Evidencia de GKE y rollback | [Validación en este README](#validación-de-telemetría-en-gke) |
-| Imagen de configuración del dashboard | [Evidencia API de Grafana](evidence/grafana-dashboard-api-evidence.png) |
-| Video 5–8 minutos | Pendiente de grabación y URL pública por el estudiante |
+| Tablero en operación | [Captura real de Grafana](Evidencias/image-3.png) |
+| Evidencias de telemetría | [Prometheus](Evidencias/image-9.png) · [Tempo](Evidencias/image-5.png) · [Loki](Evidencias/image-8.png) |
+| Evidencia del canary | [AnalysisRun fallido](Evidencias/image-7.png) |
+| Video 4:14 minutos |https://drive.google.com/file/d/1BgLZsZyyRNnLSXqsxZAt1qHwyeFd-B5G/view?usp=sharing |
 
 ## Diseño verificable
 
@@ -59,22 +61,9 @@ La falla de P10 introduce latencia en la revisión candidata con `INJECT_LATENCY
 
 ## Arquitectura y flujo de telemetría
 
-```mermaid
-flowchart LR
-  U[Cliente] --> G[api-gateway canary/stable]
-  G --> P[prestamos-ms]
-  P --> C[catalogo-ms]
-  P --> R[(RabbitMQ)] --> M[multas-ms]
-  G & P & C & M -- OTLP trazas --> O[OpenTelemetry Collector]
-  G & P & C & M -- /metrics --> PR[Prometheus]
-  G & P & C & M -- JSON stdout --> O
-  O --> T[Tempo]
-  O --> L[Loki]
-  PR & T & L --> GF[Grafana]
-  PR --> AR[Argo Rollouts AnalysisRun]
-  AR -->|error < 5% y p95 < 750 ms| PROM[Promover]
-  AR -->|umbral incumplido| RB[Rollback automático]
-```
+![Diagrama del flujo entre servicios, Prometheus, OpenTelemetry Collector, Loki, Tempo, Grafana, Argo Rollouts y Alertmanager](Evidencias/Flujo.png)
+
+El diagrama separa el tráfico de la aplicación, las métricas consultadas por Prometheus, las trazas y los registros recibidos por el Collector, y la decisión del AnalysisRun. La rama de Alertmanager representa el flujo de notificación y runbook; no demuestra por sí sola que se haya disparado una alerta.
 
 La propagación W3C `traceparent` conserva el contexto entre gateway y catálogo y, por headers AMQP, hacia multas. Los logs JSON contienen `trace_id` y `span_id` para navegar entre Loki y Tempo.
 
@@ -82,7 +71,43 @@ La propagación W3C `traceparent` conserva el contexto entre gateway y catálogo
 
 La versión `v1.2.5` fue construida, analizada y firmada por [GitHub Actions](https://github.com/Izabel05/Practicas-SA-B-202300582/actions/runs/38654115431). En la validación del 14 de octubre de 2026, el Rollout `api-gateway` terminó `Healthy 2/2` con hash `6b8d4465cf`. Prometheus devolvió `up=1` para gateway, catálogo, préstamos y multas. Argo CD mostró la aplicación y la pila de observabilidad `Synced/Healthy`.
 
-La traza `477f050345123797d0336e160cd657b` consultada en Tempo muestra `api-gateway` (SERVER) → solicitud HTTP cliente → `catalogo-ms` (SERVER) con el mismo contexto. Loki devolvió logs JSON de `sa-p9` con `trace_id` y `span_id`; un identificador observado fue `6f99688a07335aa7f1e57a00eb17fae7`. La API de Grafana confirmó UID `sa-p10-golden-signals`, `provisioned=true`, archivo externo `sa-p10-golden-signals.json` y ocho paneles. La [imagen de evidencia](evidence/grafana-dashboard-api-evidence.png) resume esa configuración; no es una captura directa de los paneles con datos en vivo.
+### Estado de GitOps y de los servicios
+
+Argo CD muestra las aplicaciones sincronizadas y saludables. Las capturas de pods muestran los servicios de `sa-p9` y el stack de `observability` ejecutándose; el estado `Running` por sí solo no prueba la recolección de datos.
+
+![Aplicaciones de Argo CD sincronizadas y saludables](Evidencias/image.png)
+
+![Pods de la aplicación en el namespace sa-p9](Evidencias/image-1.png)
+
+![Pods de Prometheus, Grafana, Loki, Tempo y OpenTelemetry en observability](Evidencias/image-2.png)
+
+### Métricas y tablero
+
+La captura real de Grafana muestra tráfico, latencia p95, CPU, memoria e indicadores SLO. Los indicadores de negocio visibles en cero no prueban que hayan ocurrido eventos de negocio durante esa ventana.
+
+![Tablero real de Grafana con métricas de operación](Evidencias/image-3.png)
+
+La primera captura de Explore muestra la consulta `up{namespace="sa-p9"}` preparada, pero no el resultado; la segunda sí muestra series con valor `1` para varios objetivos de `sa-p9`. Esta evidencia no sustituye la comprobación individual de todos los servicios.
+
+![Consulta de Prometheus preparada en Explore](Evidencias/image-4.png)
+
+![Resultado de Prometheus con series up iguales a uno](Evidencias/image-9.png)
+
+### Trazas y registros
+
+La traza `477f050345123797d0336e160cd657b` consultada previamente en Tempo muestra `api-gateway` (SERVER) → solicitud HTTP cliente → `catalogo-ms` (SERVER) con el mismo contexto. La captura siguiente muestra otra traza real entre gateway y catálogo; no muestra por sí sola tres servicios en una misma petición.
+
+![Traza real en Tempo entre api-gateway y catalogo-ms](Evidencias/image-5.png)
+
+Loki devolvió logs JSON de `sa-p9` con `trace_id` y `span_id`; un identificador observado previamente fue `6f99688a07335aa7f1e57a00eb17fae7`. La primera captura siguiente muestra la consulta preparada y la segunda muestra registros devueltos, incluidos campos de traza. No se ve en estas capturas que un `trace_id` de Loki coincida con el de la traza anterior.
+
+![Consulta de registros preparada en Loki](Evidencias/image-6.png)
+
+![Registros consultables en Loki con identificadores de traza](Evidencias/image-8.png)
+
+La API de Grafana confirmó UID `sa-p10-golden-signals`, `provisioned=true`, archivo externo `sa-p10-golden-signals.json` y ocho paneles. La captura del tablero anterior, a diferencia de la evidencia API previa, sí muestra paneles reales con datos en vivo.
+
+### Canary por métricas
 
 | Etapa | Hash candidato | AnalysisRun | Resultado |
 |---|---|---|---|
@@ -91,6 +116,10 @@ La traza `477f050345123797d0336e160cd657b` consultada en Tempo muestra `api-gate
 | Recuperación GitOps | `6b8d4465cf` | `api-gateway-6b8d4465cf-8-2`, `-5`, `-8` | `Successful`; Rollout `Healthy 2/2` |
 
 La latencia candidata de `1200 ms` se declaró en GitOps (`3d914b7`). El AnalysisRun fallido comenzó a las `2026-10-14T23:43:23Z` y terminó a las `23:43:33Z`. **Síntoma → causa → respuesta:** p95 por encima de 750 ms → latencia candidata declarada en Git → detección y aborto en unos 10 segundos, conservando la versión estable. La recuperación también fue declarativa (`cf30d6c`). El acceso anónimo temporal de inspección se retiró en `1616a6a`.
+
+La captura del AnalysisRun muestra la fase `Failed` y las horas de inicio y fin. El recorte no incluye el nombre completo del AnalysisRun, la muestra p95 fallida ni el estado del Rollout
+
+![AnalysisRun fallido con marcas de tiempo de la evaluación](Evidencias/image-7.png)
 
 ## Scripts de verificación
 
@@ -139,13 +168,3 @@ kubectl argo rollouts abort api-gateway -n sa-p9
 4. Si afecta solo a la candidata, abortar el Rollout; si afecta a ambas, escalar como incidente de plataforma.
 5. Verificar p95 menor a 750 ms durante 15 minutos; registrar causa, mitigación y tiempo de recuperación.
 
-## Guion de video (5–8 min)
-
-- 00:00–00:45: arquitectura, repositorios y namespaces.
-- 00:45–02:00: instrumentación, propagación y Collector.
-- 02:00–03:15: dashboard, SLO, error budget y alertas.
-- 03:15–05:30: Rollout, AnalysisRun fallido y rollback automático.
-- 05:30–06:30: correlación métrica → traza → log y causa.
-- 06:30–07:00: recuperación por GitOps y estado final.
-
-El video y su URL pública están pendientes de grabación por la estudiante. Se recomienda capturar el dashboard real desde `http://localhost:3000` para la entrega. El acceso por Cloud Shell Web Preview produjo `origin not allowed`; un `kubectl port-forward` local evita ese proxy.
