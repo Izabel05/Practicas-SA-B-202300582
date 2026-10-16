@@ -53,7 +53,7 @@ sum by (service) (rate(library_http_requests_total[5m]))
 histogram_quantile(0.95, sum by (le, service) (rate(library_http_request_duration_seconds_bucket[5m])))
 ```
 
-**Limitación de la versión actual:** el JSON nuevo muestra cero en los indicadores de errores 5xx y eventos de negocio cuando no hay series, y calcula el indicador de presupuesto de latencia solo para el gateway. La regla global `sa:slo_latency:error_budget_consumed` todavía usa el bucket `le="0.75"`, que solo emite el gateway; catálogo, préstamos y multas carecen de él. Un valor global previo como `9.54` no representa correctamente el presupuesto de los cuatro servicios. Se deben alinear los buckets y publicar nuevas imágenes antes de usar esa regla global como evidencia exacta.
+El tablero representa cero cuando todavía no existen series 5xx. La regla de disponibilidad del repositorio GitOps aplica el mismo criterio. La regla de latencia `sa:slo_latency:error_budget_consumed` se limita explícitamente al gateway porque solo ese servicio emite el bucket `le="0.75"`; no debe interpretarse como una medición global de los cuatro servicios. Para una SLO de latencia global habría que alinear los buckets y publicar nuevas imágenes de los microservicios.
 
 ## Demostración de reversión
 
